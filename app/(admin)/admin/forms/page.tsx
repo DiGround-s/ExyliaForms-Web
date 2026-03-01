@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Plus, Edit2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { DuplicateFormButton } from "@/components/admin/duplicate-form-button"
 import {
   Table,
   TableBody,
@@ -78,6 +79,7 @@ export default async function AdminFormsPage() {
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
+                      <DuplicateFormButton formId={form.id} />
                       <Button variant="ghost" size="icon" asChild>
                         <Link href={`/admin/forms/${form.id}/edit`}>
                           <Edit2 className="h-4 w-4" />
