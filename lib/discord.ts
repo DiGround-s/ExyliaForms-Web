@@ -1,5 +1,11 @@
 import { getSettings } from "./settings"
 
+export interface FormEmbedConfig {
+  received?: { title?: string; description?: string; footer?: string; color?: string }
+  accepted?: { title?: string; description?: string; footer?: string; color?: string }
+  rejected?: { title?: string; description?: string; cooldown?: string; footer?: string; color?: string }
+}
+
 const DISCORD_API = "https://discord.com/api/v10"
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
 
@@ -51,10 +57,12 @@ export function notifySubmissionReceived({
   discordUserId,
   formTitle,
   submissionId,
+  embedConfig,
 }: {
   discordUserId: string | null | undefined
   formTitle: string
   submissionId: string
+  embedConfig?: FormEmbedConfig | null
 }): void {
   const link = `${appUrl()}/app/submissions/${submissionId}`
   const date = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })
@@ -63,17 +71,19 @@ export function notifySubmissionReceived({
     const s = await getSettings([
       "dm_received_title", "dm_received_description", "dm_received_footer", "dm_received_color",
     ])
+    const ov = embedConfig?.received
     const vars = { formTitle, date }
+    const footer = ov?.footer ?? s.dm_received_footer
     return {
       embeds: [{
-        title: fill(s.dm_received_title, vars),
-        description: fill(s.dm_received_description, vars),
-        color: hexToInt(s.dm_received_color),
+        title: fill(ov?.title || s.dm_received_title, vars),
+        description: fill(ov?.description || s.dm_received_description, vars),
+        color: hexToInt(ov?.color || s.dm_received_color),
         fields: [
           { name: "📅 Fecha de envío", value: date, inline: true },
           { name: "🔗 Ver mi respuesta", value: `[Haz clic aquí](${link})`, inline: false },
         ],
-        footer: s.dm_received_footer ? { text: fill(s.dm_received_footer, vars) } : undefined,
+        footer: footer ? { text: fill(footer, vars) } : undefined,
       }],
     }
   })
@@ -85,12 +95,14 @@ export function notifySubmissionStatusChanged({
   submissionId,
   status,
   cooldownDays,
+  embedConfig,
 }: {
   discordUserId: string | null | undefined
   formTitle: string
   submissionId: string
   status: "ACCEPTED" | "REJECTED"
   cooldownDays: number | null
+  embedConfig?: FormEmbedConfig | null
 }): void {
   const link = `${appUrl()}/app/submissions/${submissionId}`
 
@@ -99,14 +111,16 @@ export function notifySubmissionStatusChanged({
       const s = await getSettings([
         "dm_accepted_title", "dm_accepted_description", "dm_accepted_footer", "dm_accepted_color",
       ])
+      const ov = embedConfig?.accepted
       const vars = { formTitle }
+      const footer = ov?.footer ?? s.dm_accepted_footer
       return {
         embeds: [{
-          title: fill(s.dm_accepted_title, vars),
-          description: fill(s.dm_accepted_description, vars),
-          color: hexToInt(s.dm_accepted_color),
+          title: fill(ov?.title || s.dm_accepted_title, vars),
+          description: fill(ov?.description || s.dm_accepted_description, vars),
+          color: hexToInt(ov?.color || s.dm_accepted_color),
           fields: [{ name: "🔗 Ver mi respuesta", value: `[Haz clic aquí](${link})`, inline: false }],
-          footer: s.dm_accepted_footer ? { text: fill(s.dm_accepted_footer, vars) } : undefined,
+          footer: footer ? { text: fill(footer, vars) } : undefined,
         }],
       }
     })
@@ -118,21 +132,24 @@ export function notifySubmissionStatusChanged({
       "dm_rejected_title", "dm_rejected_description", "dm_rejected_cooldown",
       "dm_rejected_footer", "dm_rejected_color",
     ])
+    const ov = embedConfig?.rejected
     const vars = { formTitle, cooldownDays: String(cooldownDays ?? "") }
+    const cooldownTemplate = ov?.cooldown ?? s.dm_rejected_cooldown
     const cooldownField =
-      cooldownDays != null && cooldownDays > 0 && s.dm_rejected_cooldown
-        ? [{ name: "⏳ Tiempo de espera", value: fill(s.dm_rejected_cooldown, vars), inline: false }]
+      cooldownDays != null && cooldownDays > 0 && cooldownTemplate
+        ? [{ name: "⏳ Tiempo de espera", value: fill(cooldownTemplate, vars), inline: false }]
         : []
+    const footer = ov?.footer ?? s.dm_rejected_footer
     return {
       embeds: [{
-        title: fill(s.dm_rejected_title, vars),
-        description: fill(s.dm_rejected_description, vars),
-        color: hexToInt(s.dm_rejected_color),
+        title: fill(ov?.title || s.dm_rejected_title, vars),
+        description: fill(ov?.description || s.dm_rejected_description, vars),
+        color: hexToInt(ov?.color || s.dm_rejected_color),
         fields: [
           ...cooldownField,
           { name: "🔗 Ver mi respuesta", value: `[Haz clic aquí](${link})`, inline: false },
         ],
-        footer: s.dm_rejected_footer ? { text: fill(s.dm_rejected_footer, vars) } : undefined,
+        footer: footer ? { text: fill(footer, vars) } : undefined,
       }],
     }
   })

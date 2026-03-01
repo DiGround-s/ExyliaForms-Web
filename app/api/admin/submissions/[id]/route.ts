@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { notifySubmissionStatusChanged } from "@/lib/discord"
+import { notifySubmissionStatusChanged, type FormEmbedConfig } from "@/lib/discord"
 import { z } from "zod"
 import { SubmissionStatus } from "@prisma/client"
 
@@ -25,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       id: true,
       status: true,
       user: { select: { discordId: true } },
-      form: { select: { title: true, reapplyCooldownDays: true } },
+      form: { select: { title: true, reapplyCooldownDays: true, dmEmbedConfig: true } },
     },
   })
   if (!submission) return Response.json({ error: "Not found" }, { status: 404 })
@@ -43,6 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       submissionId: id,
       status: newStatus,
       cooldownDays: newStatus === "REJECTED" ? (submission.form.reapplyCooldownDays ?? null) : null,
+      embedConfig: submission.form.dmEmbedConfig as FormEmbedConfig | null,
     })
   }
 

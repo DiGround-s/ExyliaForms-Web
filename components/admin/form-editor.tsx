@@ -17,6 +17,8 @@ import { FieldEditor, type FieldDef, type SectionDef } from "./field-editor"
 import { SubmissionsSplitView } from "./submissions-split-view"
 import { IconPicker } from "./icon-picker"
 import { FormUsers } from "./form-users"
+import { EmbedSection, type EmbedData } from "./embed-editor"
+import { type FormEmbedConfig } from "@/lib/discord"
 
 interface FormData {
   id: string
@@ -27,6 +29,7 @@ interface FormData {
   icon: string | null
   maxSubmissionsPerUser: number | null
   reapplyCooldownDays: number | null
+  dmEmbedConfig: FormEmbedConfig | null
   fields: FieldDef[]
   _count?: { submissions: number }
 }
@@ -60,12 +63,16 @@ export function FormEditor({ formId }: FormEditorProps) {
   const router = useRouter()
   const t = useTranslations("admin.editor")
   const tCommon = useTranslations("common")
+  const tSettings = useTranslations("settings")
   const [form, setForm] = useState<FormData | null>(null)
   const [fields, setFields] = useState<FieldDef[]>([])
   const [sections, setSections] = useState<SectionDef[]>([])
   const [submissionsData, setSubmissionsData] = useState<SubmissionsData | null>(null)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [dmReceived, setDmReceived] = useState<EmbedData>({ title: "", description: "", footer: "", color: "#5865F2" })
+  const [dmAccepted, setDmAccepted] = useState<EmbedData>({ title: "", description: "", footer: "", color: "#57F287" })
+  const [dmRejected, setDmRejected] = useState<EmbedData>({ title: "", description: "", footer: "", color: "#ED4245", cooldown: "" })
 
   useEffect(() => {
     fetch(`/api/admin/forms/${formId}`)
@@ -74,6 +81,10 @@ export function FormEditor({ formId }: FormEditorProps) {
         setForm(data)
         setFields(data.fields ?? [])
         setSections(data.sections ?? [])
+        const cfg: FormEmbedConfig = data.dmEmbedConfig ?? {}
+        setDmReceived({ title: cfg.received?.title ?? "", description: cfg.received?.description ?? "", footer: cfg.received?.footer ?? "", color: cfg.received?.color ?? "#5865F2" })
+        setDmAccepted({ title: cfg.accepted?.title ?? "", description: cfg.accepted?.description ?? "", footer: cfg.accepted?.footer ?? "", color: cfg.accepted?.color ?? "#57F287" })
+        setDmRejected({ title: cfg.rejected?.title ?? "", description: cfg.rejected?.description ?? "", footer: cfg.rejected?.footer ?? "", color: cfg.rejected?.color ?? "#ED4245", cooldown: cfg.rejected?.cooldown ?? "" })
       })
     fetch(`/api/admin/forms/${formId}/submissions`)
       .then((r) => r.json())
@@ -165,6 +176,38 @@ export function FormEditor({ formId }: FormEditorProps) {
     }
   }
 
+  async function saveNotifications() {
+    setSaving(true)
+    try {
+      const config: FormEmbedConfig = {
+        received: { title: dmReceived.title, description: dmReceived.description, footer: dmReceived.footer, color: dmReceived.color },
+        accepted: { title: dmAccepted.title, description: dmAccepted.description, footer: dmAccepted.footer, color: dmAccepted.color },
+        rejected: { title: dmRejected.title, description: dmRejected.description, footer: dmRejected.footer, color: dmRejected.color, cooldown: dmRejected.cooldown },
+      }
+      const res = await fetch(`/api/admin/forms/${formId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dmEmbedConfig: config }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(t("notificationsSaved"))
+    } catch {
+      toast.error(t("saveError"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const tEmbed = {
+    embedTitle: tSettings("discord.embedTitle"),
+    embedDescription: tSettings("discord.embedDescription"),
+    embedFooter: tSettings("discord.embedFooter"),
+    embedCooldown: tSettings("discord.embedCooldown"),
+    embedColor: tSettings("discord.embedColor"),
+    vars: tSettings("discord.vars"),
+    previewTitle: tSettings("discord.previewTitle"),
+  }
+
   if (!form) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -199,6 +242,7 @@ export function FormEditor({ formId }: FormEditorProps) {
             {t("tabSubmissions")} {form._count?.submissions ? `(${form._count.submissions})` : ""}
           </TabsTrigger>
           <TabsTrigger value="users">{t("tabUsers")}</TabsTrigger>
+          <TabsTrigger value="notifications">{t("tabNotifications")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4 pt-4">
@@ -331,6 +375,45 @@ export function FormEditor({ formId }: FormEditorProps) {
 
         <TabsContent value="users" className="pt-4">
           <FormUsers formId={formId} />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("tabNotifications")}</CardTitle>
+              <CardDescription>{t("notificationsDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <EmbedSection
+                label={tSettings("discord.received")}
+                vars={["{{formTitle}}", "{{date}}"]}
+                data={dmReceived}
+                onChange={(patch) => setDmReceived((p) => ({ ...p, ...patch }))}
+                tEmbed={tEmbed}
+              />
+              <Separator />
+              <EmbedSection
+                label={tSettings("discord.accepted")}
+                vars={["{{formTitle}}"]}
+                data={dmAccepted}
+                onChange={(patch) => setDmAccepted((p) => ({ ...p, ...patch }))}
+                tEmbed={tEmbed}
+              />
+              <Separator />
+              <EmbedSection
+                label={tSettings("discord.rejected")}
+                vars={["{{formTitle}}", "{{cooldownDays}}"]}
+                data={dmRejected}
+                onChange={(patch) => setDmRejected((p) => ({ ...p, ...patch }))}
+                hasCooldown
+                tEmbed={tEmbed}
+              />
+            </CardContent>
+          </Card>
+          <Button onClick={saveNotifications} disabled={saving}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t("save")}
+          </Button>
         </TabsContent>
       </Tabs>
     </div>

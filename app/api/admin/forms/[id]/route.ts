@@ -2,6 +2,14 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
+const embedOverrideSchema = z.object({
+  title: z.string().max(256).optional(),
+  description: z.string().max(4096).optional(),
+  footer: z.string().max(2048).optional(),
+  color: z.string().max(7).optional(),
+  cooldown: z.string().max(512).optional(),
+}).optional()
+
 const updateFormSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
@@ -9,6 +17,11 @@ const updateFormSchema = z.object({
   isActive: z.boolean().optional(),
   icon: z.string().nullable().optional(),
   reapplyCooldownDays: z.number().int().min(1).nullable().optional(),
+  dmEmbedConfig: z.object({
+    received: embedOverrideSchema,
+    accepted: embedOverrideSchema,
+    rejected: embedOverrideSchema,
+  }).nullable().optional(),
 })
 
 async function requireAdmin() {

@@ -29,18 +29,19 @@ export default async function AdminSubmissionsPage({ params }: Params) {
   const startOfWeek = new Date(startOfToday)
   startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay())
 
-  const [submissions, total, pending, accepted, rejected, today, week] = await Promise.all([
-    prisma.submission.findMany({
-      where: { formId },
-      include: {
-        user: { select: { discordId: true, username: true, globalName: true, image: true } },
-        answers: {
-          include: { field: { select: { key: true, label: true, section: { select: { title: true } } } } },
-          orderBy: { field: { order: "asc" } },
-        },
+  const submissions = await prisma.submission.findMany({
+    where: { formId },
+    include: {
+      user: { select: { discordId: true, username: true, globalName: true, image: true } },
+      answers: {
+        include: { field: { select: { key: true, label: true, section: { select: { title: true } } } } },
+        orderBy: { field: { order: "asc" } },
       },
-      orderBy: { createdAt: "desc" },
-    }),
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  const [total, pending, accepted, rejected, today, week] = await Promise.all([
     prisma.submission.count({ where: { formId } }),
     prisma.submission.count({ where: { formId, status: "PENDING" } }),
     prisma.submission.count({ where: { formId, status: "ACCEPTED" } }),

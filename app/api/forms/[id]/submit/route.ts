@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { hashIp } from "@/lib/hash"
 import { checkRateLimit } from "@/lib/rate-limit"
-import { notifySubmissionReceived } from "@/lib/discord"
+import { notifySubmissionReceived, type FormEmbedConfig } from "@/lib/discord"
 import { z } from "zod"
 
 const submitSchema = z.object({
@@ -111,6 +111,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     discordUserId: session.user.discordId,
     formTitle: form.title,
     submissionId: submission.id,
+    embedConfig: form.dmEmbedConfig as FormEmbedConfig | null,
   })
 
   return Response.json({ id: submission.id }, { status: 201 })

@@ -96,6 +96,8 @@ model Form {
   createdAt             DateTime   @default(now())
   updatedAt             DateTime   @updatedAt
 
+  dmEmbedConfig         Json?
+
   createdBy   User           @relation(fields: [createdByUserId], references: [id])
   fields      FormField[]
   sections    FormSection[]
