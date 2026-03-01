@@ -19,7 +19,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       where: { formId },
       include: {
         user: { select: { discordId: true, username: true, globalName: true, image: true } },
-        answers: { include: { field: { select: { key: true, label: true, type: true } } } },
+        answers: {
+          include: { field: { select: { key: true, label: true, section: { select: { title: true } } } } },
+          orderBy: { field: { order: "asc" } },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),

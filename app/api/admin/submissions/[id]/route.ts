@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { notifySubmissionStatusChanged } from "@/lib/discord"
 import { z } from "zod"
 import { SubmissionStatus } from "@prisma/client"
 
@@ -18,13 +19,32 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const parsed = schema.safeParse(body)
   if (!parsed.success) return Response.json(parsed.error, { status: 400 })
 
-  const submission = await prisma.submission.findUnique({ where: { id }, select: { id: true } })
+  const submission = await prisma.submission.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      status: true,
+      user: { select: { discordId: true } },
+      form: { select: { title: true, reapplyCooldownDays: true } },
+    },
+  })
   if (!submission) return Response.json({ error: "Not found" }, { status: 404 })
 
   const updated = await prisma.submission.update({
     where: { id },
     data: { status: parsed.data.status },
   })
+
+  const newStatus = parsed.data.status
+  if (newStatus === "ACCEPTED" || newStatus === "REJECTED") {
+    notifySubmissionStatusChanged({
+      discordUserId: submission.user.discordId,
+      formTitle: submission.form.title,
+      submissionId: id,
+      status: newStatus,
+      cooldownDays: newStatus === "REJECTED" ? (submission.form.reapplyCooldownDays ?? null) : null,
+    })
+  }
 
   return Response.json({ status: updated.status })
 }

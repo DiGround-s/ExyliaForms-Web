@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
+import { getTranslations } from "next-intl/server"
 import { Button } from "@/components/ui/button"
 import { SubmissionsSplitView } from "@/components/admin/submissions-split-view"
 
@@ -11,6 +12,10 @@ interface Params {
 
 export default async function AdminSubmissionsPage({ params }: Params) {
   const { id: formId } = await params
+  const [tCommon, tSub] = await Promise.all([
+    getTranslations("common"),
+    getTranslations("admin.submissions"),
+  ])
 
   const form = await prisma.form.findUnique({
     where: { id: formId },
@@ -29,7 +34,10 @@ export default async function AdminSubmissionsPage({ params }: Params) {
       where: { formId },
       include: {
         user: { select: { discordId: true, username: true, globalName: true, image: true } },
-        answers: { include: { field: { select: { key: true, label: true, type: true } } } },
+        answers: {
+          include: { field: { select: { key: true, label: true, section: { select: { title: true } } } } },
+          orderBy: { field: { order: "asc" } },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -47,10 +55,10 @@ export default async function AdminSubmissionsPage({ params }: Params) {
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/admin/forms/${formId}/edit`}>
             <ChevronLeft className="mr-1 h-4 w-4" />
-            Editar
+            {tCommon("edit")}
           </Link>
         </Button>
-        <h1 className="text-xl font-bold">{form.title} — Respuestas</h1>
+        <h1 className="text-xl font-bold">{form.title} — {tSub("responses")}</h1>
       </div>
 
       <SubmissionsSplitView

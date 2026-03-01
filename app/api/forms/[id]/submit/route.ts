@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { hashIp } from "@/lib/hash"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { notifySubmissionReceived } from "@/lib/discord"
 import { z } from "zod"
 
 const submitSchema = z.object({
@@ -37,29 +38,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "Form not available" }, { status: 404 })
   }
 
-  if (form.maxSubmissionsPerUser) {
-    const count = await prisma.submission.count({
-      where: { formId: id, userId: session.user.id },
-    })
-    if (count >= form.maxSubmissionsPerUser) {
-      return Response.json({ error: "Submission limit reached" }, { status: 400 })
-    }
-  }
+  const unlock = await prisma.formUserUnlock.findUnique({
+    where: { formId_userId: { formId: id, userId: session.user.id } },
+  })
 
-  if (form.reapplyCooldownDays) {
-    const last = await prisma.submission.findFirst({
-      where: { formId: id, userId: session.user.id, status: { in: ["ACCEPTED", "REJECTED"] } },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true, status: true },
-    })
-    if (last) {
-      const daysSince = (Date.now() - last.createdAt.getTime()) / 86400000
-      if (daysSince < form.reapplyCooldownDays) {
-        const daysLeft = Math.ceil(form.reapplyCooldownDays - daysSince)
-        return Response.json(
-          { error: `Debes esperar ${daysLeft} día${daysLeft !== 1 ? "s" : ""} para volver a aplicar` },
-          { status: 400 }
-        )
+  if (!unlock) {
+    if (form.maxSubmissionsPerUser) {
+      const count = await prisma.submission.count({
+        where: { formId: id, userId: session.user.id },
+      })
+      if (count >= form.maxSubmissionsPerUser) {
+        return Response.json({ error: "Submission limit reached" }, { status: 400 })
+      }
+    }
+
+    if (form.reapplyCooldownDays) {
+      const last = await prisma.submission.findFirst({
+        where: { formId: id, userId: session.user.id, status: { in: ["ACCEPTED", "REJECTED"] } },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true, status: true },
+      })
+      if (last) {
+        const daysSince = (Date.now() - last.createdAt.getTime()) / 86400000
+        if (daysSince < form.reapplyCooldownDays) {
+          const daysLeft = Math.ceil(form.reapplyCooldownDays - daysSince)
+          return Response.json(
+            { error: `Debes esperar ${daysLeft} día${daysLeft !== 1 ? "s" : ""} para volver a aplicar` },
+            { status: 400 }
+          )
+        }
       }
     }
   }
@@ -94,6 +101,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           })),
       },
     },
+  })
+
+  if (unlock) {
+    await prisma.formUserUnlock.delete({ where: { formId_userId: { formId: id, userId: session.user.id } } })
+  }
+
+  notifySubmissionReceived({
+    discordUserId: session.user.discordId,
+    formTitle: form.title,
+    submissionId: submission.id,
   })
 
   return Response.json({ id: submission.id }, { status: 201 })

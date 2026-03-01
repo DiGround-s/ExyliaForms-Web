@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -12,15 +13,10 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FieldEditor, type FieldDef, type SectionDef } from "./field-editor"
 import { SubmissionsSplitView } from "./submissions-split-view"
 import { IconPicker } from "./icon-picker"
-
-interface Category {
-  id: string
-  name: string
-}
+import { FormUsers } from "./form-users"
 
 interface FormData {
   id: string
@@ -31,20 +27,19 @@ interface FormData {
   icon: string | null
   maxSubmissionsPerUser: number | null
   reapplyCooldownDays: number | null
-  categoryId: string | null
   fields: FieldDef[]
   _count?: { submissions: number }
 }
 
 interface SubmissionsData {
   submissions: SubmissionItem[]
-  stats: { total: number; unread: number; today: number; week: number }
+  stats: { total: number; pending: number; accepted: number; rejected: number; today: number; week: number }
 }
 
 interface SubmissionItem {
   id: string
   createdAt: string
-  isRead: boolean
+  status: "PENDING" | "ACCEPTED" | "REJECTED"
   user: {
     discordId: string | null
     username: string | null
@@ -52,18 +47,19 @@ interface SubmissionItem {
     image: string | null
   }
   answers: Array<{
-    field: { key: string; label: string; type: string }
+    field: { key: string; label: string; section: { title: string } | null }
     valueJson: unknown
   }>
 }
 
 interface FormEditorProps {
   formId: string
-  categories: Category[]
 }
 
-export function FormEditor({ formId, categories }: FormEditorProps) {
+export function FormEditor({ formId }: FormEditorProps) {
   const router = useRouter()
+  const t = useTranslations("admin.editor")
+  const tCommon = useTranslations("common")
   const [form, setForm] = useState<FormData | null>(null)
   const [fields, setFields] = useState<FieldDef[]>([])
   const [sections, setSections] = useState<SectionDef[]>([])
@@ -96,14 +92,13 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
           description: form.description,
           maxSubmissionsPerUser: form.maxSubmissionsPerUser,
           reapplyCooldownDays: form.reapplyCooldownDays,
-          categoryId: form.categoryId,
           icon: form.icon,
         }),
       })
       if (!res.ok) throw new Error()
-      toast.success("Guardado")
+      toast.success(t("saved"))
     } catch {
-      toast.error("Error al guardar")
+      toast.error(t("saveError"))
     } finally {
       setSaving(false)
     }
@@ -122,12 +117,12 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
       })
       if (!res.ok) {
         const err = await res.json()
-        toast.error(err.issues?.[0]?.message ?? "Error al guardar campos")
+        toast.error(err.issues?.[0]?.message ?? t("fieldsError"))
         return
       }
-      toast.success("Campos guardados")
+      toast.success(t("fieldsSaved"))
     } catch {
-      toast.error("Error de conexión")
+      toast.error(t("connectionError"))
     } finally {
       setSaving(false)
     }
@@ -142,9 +137,9 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
       if (!res.ok) throw new Error()
       const updated = await res.json()
       setForm((prev) => prev ? { ...prev, status: updated.status } : prev)
-      toast.success(updated.status === "PUBLISHED" ? "Formulario publicado" : "Formulario despublicado")
+      toast.success(updated.status === "PUBLISHED" ? t("published") : t("unpublished"))
     } catch {
-      toast.error("Error")
+      toast.error(t("saveError"))
     } finally {
       setPublishing(false)
     }
@@ -162,9 +157,9 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
       if (!res.ok) throw new Error()
       const updated = await res.json()
       setForm((prev) => prev ? { ...prev, isActive: updated.isActive } : prev)
-      toast.success(updated.isActive ? "Formulario activado" : "Formulario desactivado")
+      toast.success(updated.isActive ? t("activated") : t("deactivated"))
     } catch {
-      toast.error("Error")
+      toast.error(t("saveError"))
     } finally {
       setSaving(false)
     }
@@ -186,28 +181,29 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
           <Badge variant={form.status === "PUBLISHED" ? "default" : "secondary"}>{form.status}</Badge>
           {form.status === "PUBLISHED" && (
             <Badge variant={form.isActive ? "default" : "outline"}>
-              {form.isActive ? "Activo" : "Inactivo"}
+              {form.isActive ? t("active") : t("inactive")}
             </Badge>
           )}
         </div>
         <Button variant="outline" onClick={() => router.push("/admin/forms")}>
-          Volver
+          {tCommon("back")}
         </Button>
       </div>
 
       <Tabs defaultValue="general">
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="fields">Campos</TabsTrigger>
-          <TabsTrigger value="publish">Publicación</TabsTrigger>
+          <TabsTrigger value="general">{t("tabGeneral")}</TabsTrigger>
+          <TabsTrigger value="fields">{t("tabFields")}</TabsTrigger>
+          <TabsTrigger value="publish">{t("tabPublish")}</TabsTrigger>
           <TabsTrigger value="submissions">
-            Respuestas {form._count?.submissions ? `(${form._count.submissions})` : ""}
+            {t("tabSubmissions")} {form._count?.submissions ? `(${form._count.submissions})` : ""}
           </TabsTrigger>
+          <TabsTrigger value="users">{t("tabUsers")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4 pt-4">
           <div className="space-y-2">
-            <Label>Título</Label>
+            <Label>{t("labelTitle")}</Label>
             <div className="flex items-center gap-2">
               <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} />
               <Input
@@ -217,33 +213,16 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Descripción</Label>
+            <Label>{t("labelDescription")}</Label>
             <Textarea
               value={form.description ?? ""}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Categoría</Label>
-            <Select
-              value={form.categoryId ?? "none"}
-              onValueChange={(val) => setForm({ ...form, categoryId: val === "none" ? null : val })}
-            >
-              <SelectTrigger className="w-60">
-                <SelectValue placeholder="Sin categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin categoría</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Máximo de respuestas por usuario</Label>
+              <Label>{t("labelMaxSubmissions")}</Label>
               <Input
                 type="number"
                 min="1"
@@ -255,7 +234,7 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Cooldown para re-aplicar (días)</Label>
+              <Label>{t("labelCooldown")}</Label>
               <Input
                 type="number"
                 min="1"
@@ -264,14 +243,14 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
                   setForm({ ...form, reapplyCooldownDays: e.target.value ? parseInt(e.target.value) : null })
                 }
                 className="w-40"
-                placeholder="Sin límite"
+                placeholder={t("cooldownPlaceholder")}
               />
-              <p className="text-xs text-muted-foreground">Días de espera tras ser aceptado o rechazado.</p>
+              <p className="text-xs text-muted-foreground">{t("cooldownDesc")}</p>
             </div>
           </div>
           <Button onClick={saveGeneral} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Guardar
+            {t("save")}
           </Button>
         </TabsContent>
 
@@ -284,24 +263,22 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
           />
           <Button className="mt-4" onClick={saveFields} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Guardar campos
+            {t("saveFields")}
           </Button>
         </TabsContent>
 
         <TabsContent value="publish" className="space-y-4 pt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Visibilidad</CardTitle>
-              <CardDescription>
-                Publicar hace el formulario visible para los usuarios. Activar/desactivar controla si pueden acceder y responder.
-              </CardDescription>
+              <CardTitle>{t("visibilityTitle")}</CardTitle>
+              <CardDescription>{t("visibilityDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div>
-                  <p className="font-medium">Publicación</p>
+                  <p className="font-medium">{t("publishTitle")}</p>
                   <p className="text-sm text-muted-foreground">
-                    {form.status === "PUBLISHED" ? "Visible para los usuarios" : "Oculto para los usuarios"}
+                    {form.status === "PUBLISHED" ? t("visibleToUsers") : t("hiddenFromUsers")}
                   </p>
                 </div>
                 <Button
@@ -310,7 +287,7 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
                   variant={form.status === "PUBLISHED" ? "destructive" : "default"}
                 >
                   {publishing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {form.status === "PUBLISHED" ? "Despublicar" : "Publicar"}
+                  {form.status === "PUBLISHED" ? t("unpublish") : t("publish")}
                 </Button>
               </div>
 
@@ -319,11 +296,9 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
                   <Separator />
                   <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
-                      <p className="font-medium">Estado del formulario</p>
+                      <p className="font-medium">{t("formStatusTitle")}</p>
                       <p className="text-sm text-muted-foreground">
-                        {form.isActive
-                          ? "Activo — los usuarios pueden ver y responder"
-                          : "Inactivo — los usuarios lo ven pero no pueden acceder"}
+                        {form.isActive ? t("formActiveDesc") : t("formInactiveDesc")}
                       </p>
                     </div>
                     <Button
@@ -332,7 +307,7 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
                       variant={form.isActive ? "outline" : "default"}
                     >
                       {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {form.isActive ? "Desactivar" : "Activar"}
+                      {form.isActive ? t("deactivate") : t("activate")}
                     </Button>
                   </div>
                 </>
@@ -352,6 +327,10 @@ export function FormEditor({ formId, categories }: FormEditorProps) {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="users" className="pt-4">
+          <FormUsers formId={formId} />
         </TabsContent>
       </Tabs>
     </div>

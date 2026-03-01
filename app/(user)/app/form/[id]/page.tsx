@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
+import { createElement } from "react"
+import { getTranslations } from "next-intl/server"
 import { FormRenderer } from "@/components/forms/form-renderer"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -15,6 +17,7 @@ interface Params {
 export default async function FormPage({ params }: Params) {
   const session = await auth()
   const { id } = await params
+  const t = await getTranslations("forms")
 
   const form = await prisma.form.findUnique({
     where: { id, status: "PUBLISHED" },
@@ -27,45 +30,46 @@ export default async function FormPage({ params }: Params) {
   if (!form) notFound()
 
   if (!form.isActive) {
-    const Icon = getFormIcon(form.icon)
     return (
       <div className="mx-auto max-w-2xl space-y-6">
-        <div className="flex items-center gap-3">
-          <Icon className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-bold">{form.title}</h1>
-          <Badge variant="secondary">Cerrado</Badge>
+        <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-700 flex items-center gap-3 rounded-2xl border border-border/70 bg-gradient-to-br from-card/90 to-card/70 p-5 shadow-sm backdrop-blur-sm">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/70 text-muted-foreground">
+            {createElement(getFormIcon(form.icon), { className: "h-5 w-5" })}
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight">{form.title}</h1>
+          <Badge variant="secondary">{t("statusClosed")}</Badge>
         </div>
         <Separator />
         <Alert>
           <Lock className="h-4 w-4" />
-          <AlertTitle>Formulario no disponible</AlertTitle>
-          <AlertDescription>Este formulario está temporalmente cerrado.</AlertDescription>
+          <AlertTitle>{t("formClosedTitle")}</AlertTitle>
+          <AlertDescription>{t("formClosed")}</AlertDescription>
         </Alert>
       </div>
     )
   }
 
-  let submissionCount = 0
+  let limitReached = false
   if (session && form.maxSubmissionsPerUser) {
-    submissionCount = await prisma.submission.count({
-      where: { formId: id, userId: session.user.id },
-    })
+    const [submissionCount, unlock] = await Promise.all([
+      prisma.submission.count({ where: { formId: id, userId: session.user.id } }),
+      prisma.formUserUnlock.findUnique({ where: { formId_userId: { formId: id, userId: session.user.id } } }),
+    ])
+    if (!unlock) {
+      limitReached = submissionCount >= form.maxSubmissionsPerUser
+    }
   }
-
-  const limitReached = form.maxSubmissionsPerUser
-    ? submissionCount >= form.maxSubmissionsPerUser
-    : false
-
-  const Icon = getFormIcon(form.icon)
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
+      <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-700 rounded-2xl border border-border/70 bg-gradient-to-br from-card/90 to-card/70 p-5 shadow-sm backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <Icon className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-bold">{form.title}</h1>
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/70 text-muted-foreground">
+            {createElement(getFormIcon(form.icon), { className: "h-5 w-5" })}
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight">{form.title}</h1>
           <Badge variant={limitReached ? "secondary" : "default"}>
-            {limitReached ? "Límite alcanzado" : "Abierto"}
+            {limitReached ? t("limitReached") : t("open")}
           </Badge>
         </div>
         {form.description && (
@@ -77,14 +81,14 @@ export default async function FormPage({ params }: Params) {
 
       {limitReached && (
         <Alert variant="destructive">
-          <AlertTitle>No disponible</AlertTitle>
-          <AlertDescription>Ya alcanzaste el límite de respuestas para este formulario.</AlertDescription>
+          <AlertTitle>{t("limitReachedTitle")}</AlertTitle>
+          <AlertDescription>{t("limitReachedDesc")}</AlertDescription>
         </Alert>
       )}
 
       {!limitReached && form.fields.length === 0 && (
         <Alert>
-          <AlertDescription>Este formulario no tiene campos configurados.</AlertDescription>
+          <AlertDescription>{t("noFields")}</AlertDescription>
         </Alert>
       )}
 

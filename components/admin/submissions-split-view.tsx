@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useCallback, useMemo } from "react"
+import { useTranslations, useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { SubmissionDetail } from "./submission-detail"
+import { LOCALE_META } from "@/i18n/locales"
 
 type SubmissionStatus = "PENDING" | "ACCEPTED" | "REJECTED"
 type Filter = "ALL" | SubmissionStatus
@@ -15,13 +17,6 @@ const STATUS_DOT: Record<SubmissionStatus, string> = {
   ACCEPTED: "bg-green-500",
   REJECTED: "bg-red-500",
 }
-
-const FILTERS: Array<{ key: Filter; label: string }> = [
-  { key: "ALL", label: "Todos" },
-  { key: "PENDING", label: "Pendientes" },
-  { key: "ACCEPTED", label: "Aceptados" },
-  { key: "REJECTED", label: "Rechazados" },
-]
 
 interface Submission {
   id: string
@@ -34,7 +29,7 @@ interface Submission {
     image: string | null
   }
   answers: Array<{
-    field: { key: string; label: string; type: string }
+    field: { key: string; label: string; section: { title: string } | null }
     valueJson: unknown
   }>
 }
@@ -54,11 +49,24 @@ interface SubmissionsSplitViewProps {
 }
 
 export function SubmissionsSplitView({ initialSubmissions, stats: initialStats }: SubmissionsSplitViewProps) {
+  const t = useTranslations("admin.submissions")
+  const tAdmin = useTranslations("admin")
+  const tSub = useTranslations("submissions")
+  const locale = useLocale()
+  const bcp47 = LOCALE_META[locale as keyof typeof LOCALE_META]?.bcp47 ?? locale
+
   const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions)
   const [stats, setStats] = useState<Stats>(initialStats)
   const [selectedId, setSelectedId] = useState<string | null>(initialSubmissions[0]?.id ?? null)
   const [filter, setFilter] = useState<Filter>("ALL")
   const [deleting, setDeleting] = useState<string | null>(null)
+
+  const FILTERS: Array<{ key: Filter; label: string }> = [
+    { key: "ALL", label: t("filterAll") },
+    { key: "PENDING", label: t("filterPending") },
+    { key: "ACCEPTED", label: t("filterAccepted") },
+    { key: "REJECTED", label: t("filterRejected") },
+  ]
 
   const filtered = useMemo(
     () => (filter === "ALL" ? submissions : submissions.filter((s) => s.status === filter)),
@@ -111,32 +119,34 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats }
     if (selectedId === id) setSelectedId(nextList[0]?.id ?? null)
   }, [submissions, selectedId])
 
+  const statsRows = [
+    { label: t("statsTotal"), value: stats.total },
+    { label: t("statsPending"), value: stats.pending },
+    { label: t("statsAccepted"), value: stats.accepted },
+    { label: t("statsRejected"), value: stats.rejected },
+    { label: t("statsToday"), value: stats.today },
+    { label: t("statsWeek"), value: stats.week },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-        {[
-          { label: "Total", value: stats.total },
-          { label: "Pendientes", value: stats.pending },
-          { label: "Aceptados", value: stats.accepted },
-          { label: "Rechazados", value: stats.rejected },
-          { label: "Hoy", value: stats.today },
-          { label: "Semana", value: stats.week },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg border p-3 text-center">
+        {statsRows.map(({ label, value }) => (
+          <div key={label} className="rounded-lg border border-border/70 bg-card/70 p-3 text-center shadow-sm">
             <p className="text-2xl font-bold">{value}</p>
             <p className="text-xs text-muted-foreground">{label}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1.5 rounded-lg border border-border/70 bg-card/70 p-1.5">
         {FILTERS.map(({ key, label }) => (
           <Button
             key={key}
             size="sm"
             variant={filter === key ? "default" : "outline"}
             onClick={() => setFilter(key)}
-            className="text-xs h-7"
+            className="h-7 text-xs"
           >
             {label}
             {key !== "ALL" && (
@@ -149,41 +159,50 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats }
       </div>
 
       {filtered.length === 0 ? (
-        <Alert><AlertDescription>No hay respuestas{filter !== "ALL" ? " con ese filtro" : ""} aún.</AlertDescription></Alert>
+        <Alert>
+          <AlertDescription>
+            {filter !== "ALL" ? t("noSubmissionsFilter") : t("noSubmissions")}
+          </AlertDescription>
+        </Alert>
       ) : (
-        <div className="flex gap-0 rounded-lg border overflow-hidden" style={{ height: "60vh" }}>
-          <div className="w-72 shrink-0 border-r overflow-y-auto">
+        <div className="flex gap-0 overflow-hidden rounded-xl border border-border/70 bg-card/65 shadow-sm" style={{ height: "64vh" }}>
+          <div className="w-80 shrink-0 border-r border-border/70 overflow-y-auto bg-background/50">
             {filtered.map((sub) => {
-              const name = sub.user.globalName ?? sub.user.username ?? sub.user.discordId ?? "Usuario"
+              const name = sub.user.globalName ?? sub.user.username ?? sub.user.discordId ?? tAdmin("unknownUser")
               const initial = name[0]?.toUpperCase() ?? "U"
               return (
                 <button
                   key={sub.id}
                   onClick={() => setSelectedId(sub.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 text-left border-b hover:bg-muted/50 transition-colors",
-                    selectedId === sub.id && "bg-muted"
+                    "w-full border-b border-border/60 px-4 py-3 text-left transition-colors hover:bg-muted/40",
+                    selectedId === sub.id && "bg-muted/70"
                   )}
                 >
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarImage src={sub.user.image ?? undefined} />
-                    <AvatarFallback className="text-xs">{initial}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 overflow-hidden">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="truncate text-sm font-medium">{name}</p>
-                      <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_DOT[sub.status])} />
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8 shrink-0 border border-border/60">
+                      <AvatarImage src={sub.user.image ?? undefined} />
+                      <AvatarFallback className="text-xs">{initial}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="truncate text-sm font-medium">{name}</p>
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_DOT[sub.status])} />
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {new Intl.DateTimeFormat(bcp47, { dateStyle: "medium", timeStyle: "short" }).format(new Date(sub.createdAt))}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(sub.createdAt).toLocaleDateString()}
-                    </p>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {tSub("answersCount", { count: sub.answers.length })}
                   </div>
                 </button>
               )
             })}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
             {selected ? (
               <SubmissionDetail
                 submission={selected}
@@ -193,7 +212,7 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats }
               />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                Selecciona una respuesta
+                {t("selectOne")}
               </div>
             )}
           </div>

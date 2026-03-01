@@ -6,7 +6,6 @@ const updateFormSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
   maxSubmissionsPerUser: z.number().int().positive().nullable().optional(),
-  categoryId: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   icon: z.string().nullable().optional(),
   reapplyCooldownDays: z.number().int().min(1).nullable().optional(),
@@ -30,7 +29,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       fields: { orderBy: { order: "asc" } },
       sections: { orderBy: { order: "asc" } },
       _count: { select: { submissions: true } },
-      category: { select: { id: true, name: true } },
     },
   })
 

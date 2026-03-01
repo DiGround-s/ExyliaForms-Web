@@ -2,16 +2,19 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, FileText, LogOut, ExternalLink, Folder, Settings, BarChart2 } from "lucide-react"
+import { LayoutDashboard, FileText, LogOut, ExternalLink, Settings, BarChart2, Users } from "lucide-react"
 import { signOut } from "next-auth/react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle"
+import { LanguageSwitcher } from "@/components/language-switcher"
 
 interface AdminSidebarProps {
   appName: string
+  logoUrl?: string
   user: {
     name?: string | null
     image?: string | null
@@ -19,22 +22,27 @@ interface AdminSidebarProps {
   }
 }
 
-const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/forms", label: "Formularios", icon: FileText },
-  { href: "/admin/categories", label: "Categorías", icon: Folder },
-  { href: "/admin/stats", label: "Estadísticas", icon: BarChart2 },
-  { href: "/admin/settings", label: "Configuración", icon: Settings },
-]
-
-export function AdminSidebar({ appName, user }: AdminSidebarProps) {
+export function AdminSidebar({ appName, logoUrl, user }: AdminSidebarProps) {
   const pathname = usePathname()
+  const t = useTranslations("nav")
+  const tCommon = useTranslations("common")
+
+  const navItems = [
+    { href: "/admin", label: t("dashboard"), icon: LayoutDashboard, exact: true },
+    { href: "/admin/forms", label: t("forms"), icon: FileText },
+    { href: "/admin/users", label: t("users"), icon: Users },
+    { href: "/admin/stats", label: t("stats"), icon: BarChart2 },
+    { href: "/admin/settings", label: t("settings"), icon: Settings },
+  ]
 
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar">
-      <div className="flex h-16 items-center gap-2 border-b px-6">
-        <span className="text-lg font-semibold tracking-tight">{appName}</span>
-        <Badge variant="secondary" className="text-xs">Admin</Badge>
+      <div className="flex h-16 items-center gap-2.5 border-b px-5">
+        {logoUrl && (
+          <img src={logoUrl} alt={appName} className="h-7 w-7 shrink-0 rounded object-contain" />
+        )}
+        <span className="truncate text-lg font-semibold tracking-tight">{appName}</span>
+        <Badge variant="secondary" className="ml-auto shrink-0 text-xs">{tCommon("admin")}</Badge>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
@@ -64,29 +72,42 @@ export function AdminSidebar({ appName, user }: AdminSidebarProps) {
           className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
         >
           <ExternalLink className="h-4 w-4" />
-          Vista usuario
+          {t("userView")}
         </Link>
       </div>
 
       <div className="p-3">
         <div className="flex items-center gap-2 px-2 py-1">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user.image ?? undefined} />
-            <AvatarFallback>{user.name?.[0]?.toUpperCase() ?? "A"}</AvatarFallback>
-          </Avatar>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="rounded-full ring-offset-background transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <Avatar className="h-8 w-8 cursor-pointer">
+                  <AvatarImage src={user.image ?? undefined} />
+                  <AvatarFallback>{user.name?.[0]?.toUpperCase() ?? "A"}</AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-52">
+              <DropdownMenuLabel className="font-normal">
+                <p className="truncate text-sm font-medium">{user.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive cursor-pointer"
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                {t("logout")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex-1 overflow-hidden">
             <p className="truncate text-sm font-medium">{user.name}</p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
+          <LanguageSwitcher />
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            title="Cerrar sesión"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </aside>

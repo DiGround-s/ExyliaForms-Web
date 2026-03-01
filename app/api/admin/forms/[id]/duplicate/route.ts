@@ -27,7 +27,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         status: "DRAFT",
         isActive: true,
         icon: original.icon,
-        categoryId: original.categoryId,
         maxSubmissionsPerUser: original.maxSubmissionsPerUser,
         reapplyCooldownDays: original.reapplyCooldownDays,
         createdByUserId: session.user.id,

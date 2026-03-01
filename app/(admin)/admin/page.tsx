@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { FileText, Users, CheckSquare, Bell, Plus } from "lucide-react"
+import { getTranslations, getLocale } from "next-intl/server"
+import { LOCALE_META } from "@/i18n/locales"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default async function AdminDashboard() {
-  const [publishedCount, totalSubmissions, unreadCount, usersCount, recentSubmissions] = await Promise.all([
+  const [publishedCount, totalSubmissions, unreadCount, usersCount, recentSubmissions, t, locale] = await Promise.all([
     prisma.form.count({ where: { status: "PUBLISHED" } }),
     prisma.submission.count(),
     prisma.submission.count({ where: { status: "PENDING" } }),
@@ -20,13 +22,18 @@ export default async function AdminDashboard() {
         form: { select: { title: true, id: true } },
       },
     }),
+    getTranslations("admin"),
+    getLocale(),
   ])
 
+  const bcp47 = LOCALE_META[locale as keyof typeof LOCALE_META]?.bcp47 ?? locale
+  const tCommon = await getTranslations("common")
+
   const stats = [
-    { label: "Publicados", value: publishedCount, icon: FileText },
-    { label: "Respuestas", value: totalSubmissions, icon: CheckSquare },
-    { label: "Pendientes", value: unreadCount, icon: Bell },
-    { label: "Usuarios", value: usersCount, icon: Users },
+    { label: t("statsPublished"), value: publishedCount, icon: FileText },
+    { label: t("statsResponses"), value: totalSubmissions, icon: CheckSquare },
+    { label: t("statsPending"), value: unreadCount, icon: Bell },
+    { label: t("statsUsers"), value: usersCount, icon: Users },
   ]
 
   return (
@@ -36,7 +43,7 @@ export default async function AdminDashboard() {
         <Button asChild>
           <Link href="/admin/forms/new">
             <Plus className="mr-2 h-4 w-4" />
-            Nuevo formulario
+            {t("newForm")}
           </Link>
         </Button>
       </div>
@@ -56,13 +63,13 @@ export default async function AdminDashboard() {
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Últimas respuestas</h2>
+        <h2 className="mb-3 text-lg font-semibold">{t("latestResponses")}</h2>
         {recentSubmissions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No hay respuestas aún.</p>
+          <p className="text-sm text-muted-foreground">{t("noResponses")}</p>
         ) : (
           <div className="space-y-2">
             {recentSubmissions.map((sub) => {
-              const name = sub.user.globalName ?? sub.user.username ?? sub.user.discordId ?? "Usuario"
+              const name = sub.user.globalName ?? sub.user.username ?? sub.user.discordId ?? t("unknownUser")
               const initial = name[0]?.toUpperCase() ?? "U"
               return (
                 <Card key={sub.id}>
@@ -78,12 +85,12 @@ export default async function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {sub.status === "PENDING" && <Badge variant="secondary">Pendiente</Badge>}
+                      {sub.status === "PENDING" && <Badge variant="secondary">{t("statsPending")}</Badge>}
                       <p className="text-xs text-muted-foreground">
-                        {new Date(sub.createdAt).toLocaleString()}
+                        {new Intl.DateTimeFormat(bcp47, { dateStyle: "short", timeStyle: "short" }).format(new Date(sub.createdAt))}
                       </p>
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/forms/${sub.form.id}/submissions`}>Ver</Link>
+                        <Link href={`/admin/forms/${sub.form.id}/submissions`}>{tCommon("view")}</Link>
                       </Button>
                     </div>
                   </CardContent>

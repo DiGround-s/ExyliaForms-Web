@@ -1,6 +1,6 @@
 "use client"
 
-import { Control, Controller } from "react-hook-form"
+import { Control } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -19,6 +19,9 @@ interface FieldConfig {
   max?: number
   minLength?: number
   maxLength?: number
+  checkboxText?: string
+  minDate?: string
+  maxDate?: string
 }
 
 interface FormFieldDef {
@@ -44,8 +47,8 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
       control={control}
       name={field.key}
       render={({ field: formField }) => (
-        <FormItem>
-          <FormLabel>
+        <FormItem className="space-y-3 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm backdrop-blur-sm md:p-5">
+          <FormLabel className="text-sm font-semibold tracking-tight">
             {field.label}
             {field.required && <span className="ml-1 text-destructive">*</span>}
           </FormLabel>
@@ -54,6 +57,7 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
               {(field.type === "SHORT_TEXT" || field.type === "EMAIL" || field.type === "URL") && (
                 <Input
                   {...formField}
+                  className="h-11 border-border/70 bg-background/75"
                   type={
                     field.type === "EMAIL" ? "email" : field.type === "URL" ? "url" : "text"
                   }
@@ -61,10 +65,11 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
                 />
               )}
               {field.type === "LONG_TEXT" && (
-                <Textarea {...formField} value={(formField.value as string) ?? ""} rows={4} />
+                <Textarea className="min-h-28 border-border/70 bg-background/75" {...formField} value={(formField.value as string) ?? ""} rows={4} />
               )}
               {field.type === "NUMBER" && (
                 <Input
+                  className="h-11 border-border/70 bg-background/75"
                   type="number"
                   min={config.min}
                   max={config.max}
@@ -74,18 +79,23 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
               )}
               {field.type === "DATE" && (
                 <Input
+                  className="h-11 border-border/70 bg-background/75"
                   type="date"
+                  min={config.minDate}
+                  max={config.maxDate}
                   value={(formField.value as string) ?? ""}
                   onChange={formField.onChange}
                 />
               )}
               {field.type === "CHECKBOX" && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 rounded-lg border border-border/70 bg-background/60 px-3 py-2.5">
                   <Checkbox
                     checked={!!formField.value}
                     onCheckedChange={formField.onChange}
                   />
-                  <span className="text-sm text-muted-foreground">{field.label}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {config.checkboxText || field.label}
+                  </span>
                 </div>
               )}
               {field.type === "SELECT" && (
@@ -93,7 +103,7 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
                   value={(formField.value as string) ?? ""}
                   onValueChange={formField.onChange}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 border-border/70 bg-background/75">
                     <SelectValue placeholder="Selecciona una opción" />
                   </SelectTrigger>
                   <SelectContent>
@@ -112,7 +122,7 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
                       ? (formField.value as string[])
                       : []
                     return (
-                      <div key={opt} className="flex items-center space-x-2">
+                      <div key={opt} className="flex items-center space-x-2 rounded-lg border border-border/70 bg-background/60 px-3 py-2.5">
                         <Checkbox
                           checked={selected.includes(opt)}
                           onCheckedChange={(checked) => {
@@ -131,7 +141,7 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
               )}
             </>
           </FormControl>
-          {field.helpText && <FormDescription>{field.helpText}</FormDescription>}
+          {field.helpText && <FormDescription className="text-xs text-muted-foreground">{field.helpText}</FormDescription>}
           <FormMessage />
         </FormItem>
       )}

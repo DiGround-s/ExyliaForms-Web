@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useCallback, useMemo, useState } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { useEffect, useRef, useMemo, useState } from "react"
+import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Form } from "@/components/ui/form"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -35,19 +36,24 @@ interface FormRendererProps {
   fields: FormFieldDef[]
 }
 
-function buildSchema(fields: FormFieldDef[]) {
+function buildSchema(fields: FormFieldDef[], emailMsg: string, urlMsg: string) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of fields) {
     let schema: z.ZodTypeAny = z.unknown()
     if (field.type === "SHORT_TEXT" || field.type === "LONG_TEXT") schema = z.string()
-    else if (field.type === "EMAIL") schema = z.string().email("Email inválido")
-    else if (field.type === "URL") schema = z.string().url("URL inválida")
+    else if (field.type === "EMAIL") schema = z.string().email(emailMsg)
+    else if (field.type === "URL") schema = z.string().url(urlMsg)
     else if (field.type === "NUMBER") schema = z.number()
     else if (field.type === "DATE") schema = z.string()
     else if (field.type === "CHECKBOX") schema = z.boolean()
     else if (field.type === "SELECT") schema = z.string()
     else if (field.type === "MULTI_SELECT") schema = z.array(z.string())
-    if (!field.required) schema = schema.optional()
+    if (!field.required) {
+      if (field.type === "EMAIL" || field.type === "URL") {
+        schema = z.union([z.literal(""), schema as z.ZodString])
+      }
+      schema = schema.optional()
+    }
     shape[field.key] = schema
   }
   return z.object(shape)
@@ -64,9 +70,10 @@ function getDefaultValues(fields: FormFieldDef[]) {
 
 export function FormRenderer({ formId, sections = [], fields }: FormRendererProps) {
   const router = useRouter()
+  const t = useTranslations("forms")
   const storageKey = `form-draft-${formId}`
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hasDraftRef = useRef(false)
+  const [hasDraft, setHasDraft] = useState(false)
   const [step, setStep] = useState(0)
 
   const steps = useMemo(() => {
@@ -75,51 +82,52 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
     }
     const result: Array<{ title: string; fieldKeys: string[] }> = []
     const unsectioned = fields.filter((f) => !f.sectionId).map((f) => f.key)
-    if (unsectioned.length > 0) result.push({ title: "General", fieldKeys: unsectioned })
+    if (unsectioned.length > 0) result.push({ title: t("generalSection"), fieldKeys: unsectioned })
     for (const section of sections) {
       const keys = fields.filter((f) => f.sectionId === section.id).map((f) => f.key)
       if (keys.length > 0) result.push({ title: section.title, fieldKeys: keys })
     }
     return result
-  }, [sections, fields])
+  }, [sections, fields, t])
 
   const isMultiStep = steps.length > 1
   const currentStep = steps[step] ?? steps[0]
   const currentFields = fields.filter((f) => currentStep.fieldKeys.includes(f.key))
 
-  const defaultValues = (() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(storageKey)
-        if (saved) { hasDraftRef.current = true; return JSON.parse(saved) as Record<string, unknown> }
-      } catch {}
-    }
-    return getDefaultValues(fields)
-  })()
-
-  const schema = buildSchema(fields)
+  const schema = buildSchema(fields, t("emailInvalid"), t("urlInvalid"))
   const form = useForm<Record<string, unknown>>({
     resolver: zodResolver(schema),
-    defaultValues,
+    defaultValues: getDefaultValues(fields),
   })
 
-  const watched = useWatch({ control: form.control })
-
-  const saveDraft = useCallback((values: Record<string, unknown>) => {
-    try { localStorage.setItem(storageKey, JSON.stringify(values)) } catch {}
-  }, [storageKey])
-
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => saveDraft(watched as Record<string, unknown>), 500)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [watched, saveDraft])
+    try {
+      const saved = localStorage.getItem(storageKey)
+      if (saved) {
+        form.reset(JSON.parse(saved) as Record<string, unknown>)
+        setHasDraft(true)
+      }
+    } catch {}
+
+    const { unsubscribe } = form.watch((values) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        try { localStorage.setItem(storageKey, JSON.stringify(values)) } catch {}
+      }, 500)
+    })
+
+    return () => {
+      unsubscribe()
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function clearDraft() {
     try { localStorage.removeItem(storageKey) } catch {}
-    hasDraftRef.current = false
+    setHasDraft(false)
     form.reset(getDefaultValues(fields))
-    toast.info("Borrador eliminado")
+    toast.info(t("draftCleared"))
   }
 
   async function goNext() {
@@ -143,26 +151,26 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
       })
       if (!res.ok) {
         const err = await res.json()
-        toast.error(err.error ?? "Error al enviar el formulario")
+        toast.error(err.error ?? t("submitError"))
         return
       }
       try { localStorage.removeItem(storageKey) } catch {}
-      toast.success("Respuesta enviada correctamente")
+      toast.success(t("submitSuccess"))
       router.push("/app/submissions")
     } catch {
-      toast.error("Error de conexión")
+      toast.error(t("connectionError"))
     }
   }
 
   return (
     <div className="space-y-4">
-      {hasDraftRef.current && (
+      {hasDraft && (
         <Alert>
           <AlertDescription className="flex items-center justify-between">
-            <span>Borrador recuperado.</span>
+            <span>{t("draftRecovered")}</span>
             <Button variant="ghost" size="sm" onClick={clearDraft}>
               <RotateCcw className="mr-1 h-3 w-3" />
-              Limpiar
+              {t("clearDraft")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -172,7 +180,7 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">{currentStep.title}</span>
-            <span className="text-muted-foreground">Paso {step + 1} de {steps.length}</span>
+            <span className="text-muted-foreground">{t("step", { current: step + 1, total: steps.length })}</span>
           </div>
           <div className="flex gap-1">
             {steps.map((_, i) => (
@@ -186,10 +194,7 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
       )}
 
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-6"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {currentFields.map((field) => (
             <FieldRenderer
               key={field.id}
@@ -202,18 +207,18 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
             {isMultiStep && step > 0 && (
               <Button type="button" variant="outline" onClick={goPrev}>
                 <ChevronLeft className="mr-1 h-4 w-4" />
-                Anterior
+                {t("previous")}
               </Button>
             )}
             {isMultiStep && step < steps.length - 1 ? (
               <Button type="button" onClick={goNext}>
-                Siguiente
+                {t("next")}
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Enviar respuesta
+                {t("submit")}
               </Button>
             )}
           </div>

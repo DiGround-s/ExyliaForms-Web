@@ -17,6 +17,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     Discord({
+      authorization: {
+        params: {
+          scope: "identify email applications.commands",
+          integration_type: 1,
+        },
+      },
       profile(profile) {
         const adminIds = getAdminIds()
         const role: UserRole = adminIds.includes(profile.id) ? "ADMIN" : "USER"

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { Plus, Edit2, Eye } from "lucide-react"
+import { getTranslations, getLocale } from "next-intl/server"
+import { LOCALE_META } from "@/i18n/locales"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DuplicateFormButton } from "@/components/admin/duplicate-form-button"
@@ -21,41 +23,47 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
 }
 
 export default async function AdminFormsPage() {
-  const forms = await prisma.form.findMany({
-    include: {
-      _count: { select: { submissions: true, fields: true } },
-      createdBy: { select: { username: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  const [forms, t, locale] = await Promise.all([
+    prisma.form.findMany({
+      include: {
+        _count: { select: { submissions: true, fields: true } },
+        createdBy: { select: { username: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    getTranslations("admin.forms"),
+    getLocale(),
+  ])
+
+  const bcp47 = LOCALE_META[locale as keyof typeof LOCALE_META]?.bcp47 ?? locale
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Formularios</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Button asChild>
           <Link href="/admin/forms/new">
             <Plus className="mr-2 h-4 w-4" />
-            Nuevo
+            {t("new")}
           </Link>
         </Button>
       </div>
 
       {forms.length === 0 ? (
         <Alert>
-          <AlertDescription>No hay formularios. Crea el primero.</AlertDescription>
+          <AlertDescription>{t("noForms")}</AlertDescription>
         </Alert>
       ) : (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Campos</TableHead>
-                <TableHead>Respuestas</TableHead>
-                <TableHead>Creado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+                <TableHead>{t("colTitle")}</TableHead>
+                <TableHead>{t("colStatus")}</TableHead>
+                <TableHead>{t("colFields")}</TableHead>
+                <TableHead>{t("colResponses")}</TableHead>
+                <TableHead>{t("colCreated")}</TableHead>
+                <TableHead className="text-right">{t("colActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -70,7 +78,7 @@ export default async function AdminFormsPage() {
                   <TableCell>{form._count.fields}</TableCell>
                   <TableCell>{form._count.submissions}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {new Date(form.createdAt).toLocaleDateString()}
+                    {new Intl.DateTimeFormat(bcp47, { dateStyle: "short" }).format(new Date(form.createdAt))}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
