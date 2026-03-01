@@ -2,10 +2,8 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { notifySubmissionStatusChanged, type FormEmbedConfig } from "@/lib/discord"
 import { z } from "zod"
-import { SubmissionStatus } from "@prisma/client"
-
 const schema = z.object({
-  status: z.nativeEnum(SubmissionStatus),
+  status: z.enum(["PENDING", "ACCEPTED", "REJECTED"]),
 })
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
