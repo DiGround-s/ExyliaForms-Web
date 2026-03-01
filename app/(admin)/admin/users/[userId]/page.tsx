@@ -90,7 +90,7 @@ export default async function AdminUserPage({ params }: Params) {
         </Alert>
       ) : (
         <UserSubmissions
-          submissions={submissions.map((s) => ({
+          submissions={submissions.map((s: typeof submissions[number]) => ({
             ...s,
             createdAt: s.createdAt.toISOString(),
           }))}

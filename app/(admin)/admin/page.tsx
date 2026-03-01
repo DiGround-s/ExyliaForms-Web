@@ -68,7 +68,7 @@ export default async function AdminDashboard() {
           <p className="text-sm text-muted-foreground">{t("noResponses")}</p>
         ) : (
           <div className="space-y-2">
-            {recentSubmissions.map((sub) => {
+            {recentSubmissions.map((sub: typeof recentSubmissions[number]) => {
               const name = sub.user.globalName ?? sub.user.username ?? sub.user.discordId ?? t("unknownUser")
               const initial = name[0]?.toUpperCase() ?? "U"
               return (

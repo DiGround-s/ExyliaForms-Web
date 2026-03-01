@@ -47,7 +47,7 @@ export default async function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => {
+              {users.map((user: typeof users[number]) => {
                 const name = user.globalName ?? user.username ?? user.discordId ?? "Usuario"
                 const initial = name[0]?.toUpperCase() ?? "U"
                 return (

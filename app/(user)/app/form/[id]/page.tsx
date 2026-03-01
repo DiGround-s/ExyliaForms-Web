@@ -96,7 +96,7 @@ export default async function FormPage({ params }: Params) {
         <FormRenderer
           formId={form.id}
           sections={form.sections}
-          fields={form.fields.map((f) => ({
+          fields={form.fields.map((f: typeof form.fields[number]) => ({
             ...f,
             configJson: f.configJson as Record<string, unknown>,
           }))}
