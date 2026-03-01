@@ -68,7 +68,7 @@ export default async function AdminUserPage({ params }: Params) {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <p className="text-lg font-semibold">{name}</p>
-              <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge>
+              <Badge variant={user.role === "SUPERADMIN" ? "default" : user.role === "ADMIN" ? "secondary" : "outline"}>{user.role}</Badge>
             </div>
             {user.discordId && (
               <p className="text-sm text-muted-foreground">Discord ID: {user.discordId}</p>

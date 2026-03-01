@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -22,6 +23,22 @@ const STATUS_COLORS = {
 }
 
 const PIE_COLORS = ["#f59e0b", "#22c55e", "#ef4444"]
+
+const TOOLTIP_STYLE: React.CSSProperties = {
+  backgroundColor: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius)",
+  fontSize: 12,
+}
+
+const TOOLTIP_ITEM_STYLE: React.CSSProperties = {
+  color: "var(--card-foreground)",
+}
+
+const TOOLTIP_LABEL_STYLE: React.CSSProperties = {
+  color: "var(--muted-foreground)",
+  marginBottom: 4,
+}
 
 function formatDay(iso: string) {
   const d = new Date(iso)
@@ -66,6 +83,9 @@ export function StatsCharts({ data }: { data: StatsData }) {
                 />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  itemStyle={TOOLTIP_ITEM_STYLE}
+                  labelStyle={TOOLTIP_LABEL_STYLE}
                   labelFormatter={(v) => new Date(v as string).toLocaleDateString()}
                   formatter={(v) => [v, "Respuestas"]}
                 />
@@ -105,7 +125,12 @@ export function StatsCharts({ data }: { data: StatsData }) {
                       <Cell key={i} fill={PIE_COLORS[i]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    itemStyle={TOOLTIP_ITEM_STYLE}
+                    labelStyle={TOOLTIP_LABEL_STYLE}
+                    formatter={(v, n) => [v, n]}
+                  />
                   <Legend iconType="circle" iconSize={10} />
                 </PieChart>
               </ResponsiveContainer>

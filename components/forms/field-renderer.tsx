@@ -62,10 +62,17 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
                     field.type === "EMAIL" ? "email" : field.type === "URL" ? "url" : "text"
                   }
                   value={(formField.value as string) ?? ""}
+                  maxLength={config.maxLength}
                 />
               )}
               {field.type === "LONG_TEXT" && (
-                <Textarea className="min-h-28 border-border/70 bg-background/75" {...formField} value={(formField.value as string) ?? ""} rows={4} />
+                <Textarea
+                  className="min-h-28 border-border/70 bg-background/75"
+                  {...formField}
+                  value={(formField.value as string) ?? ""}
+                  rows={4}
+                  maxLength={config.maxLength}
+                />
               )}
               {field.type === "NUMBER" && (
                 <Input

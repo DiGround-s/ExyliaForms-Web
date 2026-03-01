@@ -20,22 +20,23 @@ const lato = Lato({ variable: "--font-lato", subsets: ["latin"], weight: ["400",
 const raleway = Raleway({ variable: "--font-raleway", subsets: ["latin"] })
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings(["app_name", "favicon_url"])
+  const settings = await getSettings(["app_name"])
   return {
     title: settings.app_name || "Exylia Forms",
     description: "Sistema de formularios con autenticación Discord",
-    icons: settings.favicon_url ? { icon: settings.favicon_url } : undefined,
   }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale()
   const messages = await getMessages()
+  const { favicon_url } = await getSettings(["favicon_url"])
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
         <ThemeInjector />
+        {favicon_url && <link rel="icon" href={favicon_url} />}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${roboto.variable} ${openSans.variable} ${poppins.variable} ${nunito.variable} ${dmSans.variable} ${playfair.variable} ${lato.variable} ${raleway.variable} antialiased`}>
         <NextIntlClientProvider messages={messages} locale={locale}>

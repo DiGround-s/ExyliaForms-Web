@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { redirect } from "next/navigation"
 import { getSettings } from "@/lib/settings"
 import { UserSidebar } from "@/components/layout/user-sidebar"
@@ -21,7 +22,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
         image: session.user.image,
         email: session.user.email,
       }}
-      isAdmin={session.user.role === "ADMIN"}
+      isAdmin={hasAdminAccess(session.user.role)}
     />
   )
 

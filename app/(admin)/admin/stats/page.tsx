@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { FileText, Users, CheckSquare, Clock, CheckCircle, XCircle } from "lucide-react"
@@ -7,7 +8,7 @@ import { StatsCharts } from "@/components/admin/stats-charts"
 
 export default async function StatsPage() {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") redirect("/app/forms")
+  if (!session || !hasAdminAccess(session.user.role)) redirect("/app/forms")
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000)
 

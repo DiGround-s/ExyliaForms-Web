@@ -1,4 +1,5 @@
 import { auth, signIn } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { redirect } from "next/navigation"
 import { getSetting } from "@/lib/settings"
 import { getTranslations } from "next-intl/server"
@@ -9,7 +10,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle"
 export default async function LandingPage() {
   const session = await auth()
   if (session) {
-    if (session.user.role === "ADMIN") redirect("/admin")
+    if (hasAdminAccess(session.user.role)) redirect("/admin")
     redirect("/app/forms")
   }
 

@@ -36,12 +36,24 @@ interface FormRendererProps {
   fields: FormFieldDef[]
 }
 
-function buildSchema(fields: FormFieldDef[], emailMsg: string, urlMsg: string) {
+function buildSchema(
+  fields: FormFieldDef[],
+  emailMsg: string,
+  urlMsg: string,
+  minLengthMsg: (min: number) => string,
+  maxLengthMsg: (max: number) => string,
+) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of fields) {
     let schema: z.ZodTypeAny = z.unknown()
-    if (field.type === "SHORT_TEXT" || field.type === "LONG_TEXT") schema = z.string()
-    else if (field.type === "EMAIL") schema = z.string().email(emailMsg)
+    if (field.type === "SHORT_TEXT" || field.type === "LONG_TEXT") {
+      let s = z.string()
+      const minLen = field.configJson.minLength as number | undefined
+      const maxLen = field.configJson.maxLength as number | undefined
+      if (minLen) s = s.min(minLen, minLengthMsg(minLen))
+      if (maxLen) s = s.max(maxLen, maxLengthMsg(maxLen))
+      schema = s
+    } else if (field.type === "EMAIL") schema = z.string().email(emailMsg)
     else if (field.type === "URL") schema = z.string().url(urlMsg)
     else if (field.type === "NUMBER") schema = z.number()
     else if (field.type === "DATE") schema = z.string()
@@ -73,6 +85,7 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
   const t = useTranslations("forms")
   const storageKey = `form-draft-${formId}`
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const navigatingRef = useRef(false)
   const [hasDraft, setHasDraft] = useState(false)
   const [step, setStep] = useState(0)
 
@@ -94,7 +107,13 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
   const currentStep = steps[step] ?? steps[0]
   const currentFields = fields.filter((f) => currentStep.fieldKeys.includes(f.key))
 
-  const schema = buildSchema(fields, t("emailInvalid"), t("urlInvalid"))
+  const schema = buildSchema(
+    fields,
+    t("emailInvalid"),
+    t("urlInvalid"),
+    (min) => t("minLengthMsg", { min }),
+    (max) => t("maxLengthMsg", { max }),
+  )
   const form = useForm<Record<string, unknown>>({
     resolver: zodResolver(schema),
     defaultValues: getDefaultValues(fields),
@@ -131,10 +150,16 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
   }
 
   async function goNext() {
-    const valid = await form.trigger(currentStep.fieldKeys as (keyof Record<string, unknown>)[])
-    if (!valid) return
-    setStep((s) => Math.min(s + 1, steps.length - 1))
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    if (navigatingRef.current) return
+    navigatingRef.current = true
+    try {
+      const valid = await form.trigger(currentStep.fieldKeys as (keyof Record<string, unknown>)[])
+      if (!valid) return
+      setStep((s) => Math.min(s + 1, steps.length - 1))
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } finally {
+      navigatingRef.current = false
+    }
   }
 
   function goPrev() {

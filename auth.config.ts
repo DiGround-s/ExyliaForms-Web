@@ -19,12 +19,13 @@ export const authConfig: NextAuthConfig = {
         token.role = ((user as { role?: string }).role ?? "USER") as "USER" | "ADMIN" | "SUPERADMIN"
       }
       if (account?.provider === "discord" && profile) {
-        const discordId = (profile as { id: string }).id
+        token.discordId = (profile as { id: string }).id
+      }
+      if (token.discordId) {
         const superAdminIds = getSuperAdminIds()
-        if (superAdminIds.includes(discordId)) {
+        if (superAdminIds.includes(token.discordId as string)) {
           token.role = "SUPERADMIN"
         }
-        token.discordId = discordId
       }
       return token
     },

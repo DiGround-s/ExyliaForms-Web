@@ -100,6 +100,7 @@ export function AppSettingsForm({ initialSettings }: Props) {
   })
   const [saving, setSaving] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  const faviconInputRef = useRef<HTMLInputElement>(null)
 
   function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -110,6 +111,18 @@ export function AppSettingsForm({ initialSettings }: Props) {
     }
     const reader = new FileReader()
     reader.onload = (ev) => setLogoUrl(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function handleFaviconFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 512 * 1024) {
+      toast.error(t("identity.faviconTooLarge"))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => setFaviconUrl(ev.target?.result as string)
     reader.readAsDataURL(file)
   }
 
@@ -252,13 +265,45 @@ export function AppSettingsForm({ initialSettings }: Props) {
 
           <div className="space-y-2">
             <Label>{t("identity.faviconUrl")}</Label>
-            <Input
-              value={faviconUrl}
-              onChange={(e) => setFaviconUrl(e.target.value)}
-              placeholder={t("identity.faviconPlaceholder")}
-              className="max-w-sm"
-            />
-            <p className="text-xs text-muted-foreground">{t("identity.faviconDesc")}</p>
+            <div className="flex items-start gap-4">
+              {faviconUrl && (
+                <div className="relative shrink-0">
+                  <img
+                    src={faviconUrl}
+                    alt="Favicon"
+                    className="h-10 w-10 rounded border object-contain p-1"
+                  />
+                  <button
+                    onClick={() => setFaviconUrl("")}
+                    className="absolute -right-2 -top-2 rounded-full bg-destructive p-0.5 text-destructive-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+              <div className="flex-1 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={faviconUrl.startsWith("data:") ? t("identity.logoUploaded") : faviconUrl}
+                    onChange={(e) => setFaviconUrl(e.target.value)}
+                    placeholder={t("identity.faviconPlaceholder")}
+                    className="flex-1"
+                    readOnly={faviconUrl.startsWith("data:")}
+                  />
+                  <Button variant="outline" size="icon" onClick={() => faviconInputRef.current?.click()}>
+                    <Upload className="h-4 w-4" />
+                  </Button>
+                </div>
+                <input
+                  ref={faviconInputRef}
+                  type="file"
+                  accept="image/*,.ico"
+                  className="hidden"
+                  onChange={handleFaviconFile}
+                />
+                <p className="text-xs text-muted-foreground">{t("identity.faviconDesc")}</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

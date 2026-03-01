@@ -6,7 +6,7 @@ import { z } from "zod"
 const schema = z.object({
   app_name: z.string().min(1).max(64).optional(),
   logo_url: z.string().max(2097152).optional(),
-  favicon_url: z.string().max(512).optional(),
+  favicon_url: z.string().max(524288).optional(),
   color_preset: z.enum(["purple", "blue", "indigo", "teal", "green", "amber", "orange", "rose", "cyan", "lime", "pink", "crimson", "sunset", "aurora", "ocean", "forest", "midnight", "candy", "custom", "custom-gradient"]).optional(),
   custom_gradient_hue1: z.string().optional(),
   custom_gradient_hue2: z.string().optional(),

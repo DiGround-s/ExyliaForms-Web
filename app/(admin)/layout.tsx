@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { redirect } from "next/navigation"
 import { getSettings } from "@/lib/settings"
 import { AdminSidebar } from "@/components/layout/admin-sidebar"
@@ -6,7 +7,7 @@ import { MobileDrawer } from "@/components/layout/mobile-drawer"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") redirect("/app/forms")
+  if (!session || !hasAdminAccess(session.user.role)) redirect("/app/forms")
 
   const settings = await getSettings(["app_name", "logo_url"])
   const appName = settings.app_name
