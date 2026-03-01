@@ -67,7 +67,7 @@ export default async function AdminFormsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {forms.map((form) => (
+              {forms.map((form: typeof forms[number]) => (
                 <TableRow key={form.id}>
                   <TableCell className="font-medium">{form.title}</TableCell>
                   <TableCell>
