@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { z } from "zod"
 
 const embedOverrideSchema = z.object({
@@ -62,7 +63,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return Response.json({ error: "Invalid data", issues: parsed.error.issues }, { status: 400 })
   }
 
-  const form = await prisma.form.update({ where: { id }, data: parsed.data })
+  const { dmEmbedConfig, ...rest } = parsed.data
+  const form = await prisma.form.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(dmEmbedConfig !== undefined
+        ? { dmEmbedConfig: dmEmbedConfig ?? Prisma.JsonNull }
+        : {}),
+    },
+  })
 
   return Response.json(form)
 }
