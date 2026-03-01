@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth"
-import { hasAdminAccess } from "@/lib/auth-utils"
+import { hasReviewerAccess } from "@/lib/auth-utils"
 import { redirect } from "next/navigation"
 import { getSettings } from "@/lib/settings"
 import { AdminSidebar } from "@/components/layout/admin-sidebar"
@@ -7,7 +7,7 @@ import { MobileDrawer } from "@/components/layout/mobile-drawer"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
-  if (!session || !hasAdminAccess(session.user.role)) redirect("/app/forms")
+  if (!session || !hasReviewerAccess(session.user.role)) redirect("/app/forms")
 
   const settings = await getSettings(["app_name", "logo_url"])
   const appName = settings.app_name
@@ -17,6 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <AdminSidebar
       appName={appName}
       logoUrl={logoUrl || undefined}
+      role={session.user.role}
       user={{
         name: session.user.name,
         image: session.user.image,

@@ -46,7 +46,8 @@ export default async function AdminUsersPage({
     }),
   ])
 
-  const canManageRoles = isSuperAdmin(session?.user.role)
+  const actorRole = session?.user.role ?? "USER"
+  const canManageRoles = actorRole === "ADMIN" || actorRole === "SUPERADMIN"
 
   const roleBadgeVariant = (role: string) => {
     if (role === "SUPERADMIN") return "default" as const
@@ -118,7 +119,7 @@ export default async function AdminUsersPage({
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {canManageRoles && user.id !== session?.user.id && (
-                          <UserRoleToggle userId={user.id} currentRole={user.role} />
+                          <UserRoleToggle userId={user.id} currentRole={user.role} actorRole={actorRole} />
                         )}
                         <Button variant="ghost" size="sm" asChild>
                           <Link href={`/admin/users/${user.id}`}>Ver respuestas</Link>

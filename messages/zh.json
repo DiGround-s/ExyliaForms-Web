@@ -19,6 +19,8 @@
     "back": "返回",
     "view": "查看",
     "admin": "管理员",
+    "reviewer": "审核员",
+    "superadmin": "超级管理员",
     "yes": "是",
     "no": "否",
     "noAnswer": "无回答",

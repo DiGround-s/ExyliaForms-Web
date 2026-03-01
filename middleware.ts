@@ -16,8 +16,16 @@ export default auth((req) => {
   }
 
   if (pathname.startsWith("/admin")) {
-    if (session.user.role !== "ADMIN" && session.user.role !== "SUPERADMIN") {
+    const role = session.user.role
+    if (role !== "REVIEWER" && role !== "ADMIN" && role !== "SUPERADMIN") {
       return NextResponse.redirect(new URL("/app/forms", req.url))
+    }
+    if (role === "REVIEWER") {
+      const isFormsIndex = pathname === "/admin/forms"
+      const isSubmissionsPage = /^\/admin\/forms\/[^/]+\/submissions/.test(pathname)
+      if (!isFormsIndex && !isSubmissionsPage) {
+        return NextResponse.redirect(new URL("/admin/forms", req.url))
+      }
     }
   }
 

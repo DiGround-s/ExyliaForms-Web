@@ -46,9 +46,10 @@ interface Stats {
 interface SubmissionsSplitViewProps {
   initialSubmissions: Submission[]
   stats: Stats
+  readOnly?: boolean
 }
 
-export function SubmissionsSplitView({ initialSubmissions, stats: initialStats }: SubmissionsSplitViewProps) {
+export function SubmissionsSplitView({ initialSubmissions, stats: initialStats, readOnly = false }: SubmissionsSplitViewProps) {
   const t = useTranslations("admin.submissions")
   const tAdmin = useTranslations("admin")
   const tSub = useTranslations("submissions")
@@ -206,8 +207,8 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats }
             {selected ? (
               <SubmissionDetail
                 submission={selected}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
+                onStatusChange={readOnly ? undefined : handleStatusChange}
+                onDelete={readOnly ? undefined : handleDelete}
                 deleting={deleting === selected.id}
               />
             ) : (

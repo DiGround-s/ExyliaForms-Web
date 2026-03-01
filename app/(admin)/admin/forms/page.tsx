@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import Link from "next/link"
 import { Plus, Edit2, Eye } from "lucide-react"
 import { getTranslations, getLocale } from "next-intl/server"
@@ -23,7 +24,8 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
 }
 
 export default async function AdminFormsPage() {
-  const [forms, t, locale] = await Promise.all([
+  const [session, forms, t, locale] = await Promise.all([
+    auth(),
     prisma.form.findMany({
       include: {
         _count: { select: { submissions: true, fields: true } },
@@ -35,18 +37,22 @@ export default async function AdminFormsPage() {
     getLocale(),
   ])
 
+  const isReviewer = session?.user.role === "REVIEWER"
+
   const bcp47 = LOCALE_META[locale as keyof typeof LOCALE_META]?.bcp47 ?? locale
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <Button asChild>
-          <Link href="/admin/forms/new">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("new")}
-          </Link>
-        </Button>
+        {!isReviewer && (
+          <Button asChild>
+            <Link href="/admin/forms/new">
+              <Plus className="mr-2 h-4 w-4" />
+              {t("new")}
+            </Link>
+          </Button>
+        )}
       </div>
 
       {forms.length === 0 ? (
@@ -87,12 +93,14 @@ export default async function AdminFormsPage() {
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
-                      <DuplicateFormButton formId={form.id} />
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/admin/forms/${form.id}/edit`}>
-                          <Edit2 className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                      {!isReviewer && <DuplicateFormButton formId={form.id} />}
+                      {!isReviewer && (
+                        <Button variant="ghost" size="icon" asChild>
+                          <Link href={`/admin/forms/${form.id}/edit`}>
+                            <Edit2 className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

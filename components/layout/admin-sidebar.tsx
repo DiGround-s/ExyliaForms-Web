@@ -15,6 +15,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 interface AdminSidebarProps {
   appName: string
   logoUrl?: string
+  role?: string
   user: {
     name?: string | null
     image?: string | null
@@ -22,18 +23,28 @@ interface AdminSidebarProps {
   }
 }
 
-export function AdminSidebar({ appName, logoUrl, user }: AdminSidebarProps) {
+export function AdminSidebar({ appName, logoUrl, role, user }: AdminSidebarProps) {
   const pathname = usePathname()
   const t = useTranslations("nav")
   const tCommon = useTranslations("common")
 
-  const navItems = [
-    { href: "/admin", label: t("dashboard"), icon: LayoutDashboard, exact: true },
-    { href: "/admin/forms", label: t("forms"), icon: FileText },
-    { href: "/admin/users", label: t("users"), icon: Users },
-    { href: "/admin/stats", label: t("stats"), icon: BarChart2 },
-    { href: "/admin/settings", label: t("settings"), icon: Settings },
+  const isReviewer = role === "REVIEWER"
+
+  const allNavItems = [
+    { href: "/admin", label: t("dashboard"), icon: LayoutDashboard, exact: true, reviewerAllowed: false },
+    { href: "/admin/forms", label: t("forms"), icon: FileText, reviewerAllowed: true },
+    { href: "/admin/users", label: t("users"), icon: Users, reviewerAllowed: false },
+    { href: "/admin/stats", label: t("stats"), icon: BarChart2, reviewerAllowed: false },
+    { href: "/admin/settings", label: t("settings"), icon: Settings, reviewerAllowed: false },
   ]
+
+  const navItems = allNavItems.filter((item) => !isReviewer || item.reviewerAllowed)
+
+  const roleBadgeLabel = role === "SUPERADMIN"
+    ? tCommon("superadmin")
+    : role === "REVIEWER"
+      ? tCommon("reviewer")
+      : tCommon("admin")
 
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar">
@@ -42,7 +53,7 @@ export function AdminSidebar({ appName, logoUrl, user }: AdminSidebarProps) {
           <img src={logoUrl} alt={appName} className="h-7 w-7 shrink-0 rounded object-contain" />
         )}
         <span className="truncate text-lg font-semibold tracking-tight">{appName}</span>
-        <Badge variant="secondary" className="ml-auto shrink-0 text-xs">{tCommon("admin")}</Badge>
+        <Badge variant="secondary" className="ml-auto shrink-0 text-xs">{roleBadgeLabel}</Badge>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">

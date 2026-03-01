@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
@@ -12,10 +13,12 @@ interface Params {
 
 export default async function AdminSubmissionsPage({ params }: Params) {
   const { id: formId } = await params
-  const [tCommon, tSub] = await Promise.all([
+  const [session, tCommon, tSub] = await Promise.all([
+    auth(),
     getTranslations("common"),
     getTranslations("admin.submissions"),
   ])
+  const isReviewer = session?.user.role === "REVIEWER"
 
   const form = await prisma.form.findUnique({
     where: { id: formId },
@@ -54,9 +57,9 @@ export default async function AdminSubmissionsPage({ params }: Params) {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/admin/forms/${formId}/edit`}>
+          <Link href={isReviewer ? "/admin/forms" : `/admin/forms/${formId}/edit`}>
             <ChevronLeft className="mr-1 h-4 w-4" />
-            {tCommon("edit")}
+            {isReviewer ? tCommon("back") : tCommon("edit")}
           </Link>
         </Button>
         <h1 className="text-xl font-bold">{form.title} — {tSub("responses")}</h1>
@@ -68,6 +71,7 @@ export default async function AdminSubmissionsPage({ params }: Params) {
           createdAt: s.createdAt.toISOString(),
         }))}
         stats={{ total, pending, accepted, rejected, today, week }}
+        readOnly={isReviewer}
       />
     </div>
   )

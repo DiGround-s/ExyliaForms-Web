@@ -19,6 +19,8 @@
     "back": "Voltar",
     "view": "Ver",
     "admin": "Admin",
+    "reviewer": "Revisor",
+    "superadmin": "SuperAdmin",
     "yes": "Sim",
     "no": "Não",
     "noAnswer": "Sem resposta",

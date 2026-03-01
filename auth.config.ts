@@ -16,7 +16,7 @@ export const authConfig: NextAuthConfig = {
     jwt({ token, user, account, profile }) {
       if (user) {
         token.id = user.id
-        token.role = ((user as { role?: string }).role ?? "USER") as "USER" | "ADMIN" | "SUPERADMIN"
+        token.role = ((user as { role?: string }).role ?? "USER") as "USER" | "REVIEWER" | "ADMIN" | "SUPERADMIN"
       }
       if (account?.provider === "discord" && profile) {
         token.discordId = (profile as { id: string }).id
@@ -31,7 +31,7 @@ export const authConfig: NextAuthConfig = {
     },
     session({ session, token }) {
       session.user.id = token.id as string
-      session.user.role = token.role as "USER" | "ADMIN" | "SUPERADMIN"
+      session.user.role = token.role as "USER" | "REVIEWER" | "ADMIN" | "SUPERADMIN"
       session.user.discordId = token.discordId as string
       return session
     },
