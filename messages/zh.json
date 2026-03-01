@@ -271,6 +271,21 @@
       "title": "高级 CSS",
       "desc": "全局注入到整个应用的自定义 CSS。",
       "warning": "此 CSS 将无过滤地应用于整个应用程序。"
+    },
+    "discord": {
+      "title": "Discord 通知",
+      "desc": "自定义通过 DM 发送给用户的 embed 内容。",
+      "received": "已收到申请",
+      "accepted": "申请已通过",
+      "rejected": "申请已拒绝",
+      "embedTitle": "标题",
+      "embedDescription": "描述",
+      "embedFooter": "页脚",
+      "embedCooldown": "等待文本",
+      "embedColor": "颜色",
+      "vars": "可用变量",
+      "previewTitle": "预览",
+      "noFooter": "无页脚"
     }
   },
   "fieldTypes": {

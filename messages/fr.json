@@ -271,6 +271,21 @@
       "title": "CSS Avancé",
       "desc": "CSS personnalisé injecté globalement dans toute l'application.",
       "warning": "Ce CSS est appliqué à toute l'application sans aucun filtre."
+    },
+    "discord": {
+      "title": "Notifications Discord",
+      "desc": "Personnalisez le contenu de l'embed envoyé par DM aux utilisateurs.",
+      "received": "Candidature reçue",
+      "accepted": "Candidature acceptée",
+      "rejected": "Candidature refusée",
+      "embedTitle": "Titre",
+      "embedDescription": "Description",
+      "embedFooter": "Pied de page",
+      "embedCooldown": "Texte d'attente",
+      "embedColor": "Couleur",
+      "vars": "Variables disponibles",
+      "previewTitle": "Aperçu",
+      "noFooter": "Pas de pied de page"
     }
   },
   "fieldTypes": {
