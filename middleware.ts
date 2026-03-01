@@ -16,7 +16,7 @@ export default auth((req) => {
   }
 
   if (pathname.startsWith("/admin")) {
-    if (session.user.role !== "ADMIN") {
+    if (session.user.role !== "ADMIN" && session.user.role !== "SUPERADMIN") {
       return NextResponse.redirect(new URL("/app/forms", req.url))
     }
   }

@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
+import { FieldType } from "@prisma/client"
 import { z } from "zod"
-const FIELD_TYPES = ["SHORT_TEXT", "LONG_TEXT", "NUMBER", "SELECT", "MULTI_SELECT", "CHECKBOX", "DATE", "EMAIL", "URL"] as const
 
 const sectionSchema = z.object({
   id: z.string().min(1),
@@ -13,7 +14,7 @@ const fieldSchema = z.object({
   id: z.string().uuid().optional(),
   sectionId: z.string().nullable().optional(),
   key: z.string().min(1).max(100).regex(/^[a-z0-9_]+$/),
-  type: z.enum(FIELD_TYPES),
+  type: z.nativeEnum(FieldType),
   label: z.string().min(1).max(200),
   helpText: z.string().max(500).nullable().optional(),
   required: z.boolean().default(false),
@@ -28,7 +29,7 @@ const bodySchema = z.object({
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || !hasAdminAccess(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 

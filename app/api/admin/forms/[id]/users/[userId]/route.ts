@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
@@ -6,7 +7,7 @@ const schema = z.object({ unlocked: z.boolean() })
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string; userId: string }> }) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || !hasAdminAccess(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 

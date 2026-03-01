@@ -1,9 +1,10 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || !hasAdminAccess(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 

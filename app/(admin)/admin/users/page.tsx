@@ -1,26 +1,40 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { isSuperAdmin } from "@/lib/auth-utils"
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { UserRoleToggle } from "@/components/admin/user-role-toggle"
 
 export default async function AdminUsersPage() {
-  const users = await prisma.user.findMany({
-    orderBy: { lastLoginAt: "desc" },
-    select: {
-      id: true,
-      discordId: true,
-      username: true,
-      globalName: true,
-      image: true,
-      role: true,
-      createdAt: true,
-      lastLoginAt: true,
-      _count: { select: { submissions: true } },
-    },
-  })
+  const [session, users] = await Promise.all([
+    auth(),
+    prisma.user.findMany({
+      orderBy: { lastLoginAt: "desc" },
+      select: {
+        id: true,
+        discordId: true,
+        username: true,
+        globalName: true,
+        image: true,
+        role: true,
+        createdAt: true,
+        lastLoginAt: true,
+        _count: { select: { submissions: true } },
+      },
+    }),
+  ])
+
+  const canManageRoles = isSuperAdmin(session?.user.role)
+
+  const roleBadgeVariant = (role: string) => {
+    if (role === "SUPERADMIN") return "default" as const
+    if (role === "ADMIN") return "secondary" as const
+    return "outline" as const
+  }
 
   return (
     <div className="space-y-6">
@@ -47,7 +61,7 @@ export default async function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user: typeof users[number]) => {
+              {users.map((user) => {
                 const name = user.globalName ?? user.username ?? user.discordId ?? "Usuario"
                 const initial = name[0]?.toUpperCase() ?? "U"
                 return (
@@ -67,7 +81,7 @@ export default async function AdminUsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>
+                      <Badge variant={roleBadgeVariant(user.role)}>
                         {user.role}
                       </Badge>
                     </TableCell>
@@ -79,9 +93,14 @@ export default async function AdminUsersPage() {
                       {new Date(user.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/users/${user.id}`}>Ver respuestas</Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        {canManageRoles && user.id !== session?.user.id && (
+                          <UserRoleToggle userId={user.id} currentRole={user.role} />
+                        )}
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/admin/users/${user.id}`}>Ver respuestas</Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )

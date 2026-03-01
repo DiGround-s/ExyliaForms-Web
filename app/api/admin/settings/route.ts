@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { setSettings } from "@/lib/settings"
 import { z } from "zod"
 
@@ -32,7 +33,7 @@ const schema = z.object({
 
 export async function PUT(req: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || !hasAdminAccess(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 

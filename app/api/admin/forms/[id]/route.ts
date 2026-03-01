@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { z } from "zod"
@@ -27,7 +28,7 @@ const updateFormSchema = z.object({
 
 async function requireAdmin() {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return null
+  if (!session || !hasAdminAccess(session.user.role)) return null
   return session
 }
 

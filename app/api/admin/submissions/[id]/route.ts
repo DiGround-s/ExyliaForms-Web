@@ -1,14 +1,17 @@
 import { auth } from "@/lib/auth"
+import { hasAdminAccess } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
 import { notifySubmissionStatusChanged, type FormEmbedConfig } from "@/lib/discord"
 import { z } from "zod"
+import { SubmissionStatus } from "@prisma/client"
+
 const schema = z.object({
-  status: z.enum(["PENDING", "ACCEPTED", "REJECTED"]),
+  status: z.nativeEnum(SubmissionStatus),
 })
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || !hasAdminAccess(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -50,7 +53,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || !hasAdminAccess(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
