@@ -2,10 +2,12 @@
 
 import { useState, useCallback, useMemo } from "react"
 import { useTranslations, useLocale } from "next-intl"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { SubmissionDetail } from "./submission-detail"
 import { LOCALE_META } from "@/i18n/locales"
 
@@ -44,14 +46,16 @@ interface Stats {
 }
 
 interface SubmissionsSplitViewProps {
+  formId: string
   initialSubmissions: Submission[]
   stats: Stats
   readOnly?: boolean
 }
 
-export function SubmissionsSplitView({ initialSubmissions, stats: initialStats, readOnly = false }: SubmissionsSplitViewProps) {
+export function SubmissionsSplitView({ formId, initialSubmissions, stats: initialStats, readOnly = false }: SubmissionsSplitViewProps) {
   const t = useTranslations("admin.submissions")
   const tAdmin = useTranslations("admin")
+  const tCommon = useTranslations("common")
   const tSub = useTranslations("submissions")
   const locale = useLocale()
   const bcp47 = LOCALE_META[locale as keyof typeof LOCALE_META]?.bcp47 ?? locale
@@ -61,6 +65,8 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats, 
   const [selectedId, setSelectedId] = useState<string | null>(initialSubmissions[0]?.id ?? null)
   const [filter, setFilter] = useState<Filter>("ALL")
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deletingAll, setDeletingAll] = useState(false)
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
 
   const FILTERS: Array<{ key: Filter; label: string }> = [
     { key: "ALL", label: t("filterAll") },
@@ -120,6 +126,18 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats, 
     if (selectedId === id) setSelectedId(nextList[0]?.id ?? null)
   }, [submissions, selectedId])
 
+  const handleDeleteAll = useCallback(async () => {
+    setDeletingAll(true)
+    const res = await fetch(`/api/admin/forms/${formId}/submissions`, { method: "DELETE" })
+    setDeletingAll(false)
+    if (!res.ok) return
+
+    setSubmissions([])
+    setStats((st) => ({ ...st, total: 0, pending: 0, accepted: 0, rejected: 0, today: 0, week: 0 }))
+    setSelectedId(null)
+    setConfirmDeleteAll(false)
+  }, [formId])
+
   const statsRows = [
     { label: t("statsTotal"), value: stats.total },
     { label: t("statsPending"), value: stats.pending },
@@ -140,23 +158,35 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats, 
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-1.5 rounded-lg border border-border/70 bg-card/70 p-1.5">
-        {FILTERS.map(({ key, label }) => (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-card/70 p-1.5">
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map(({ key, label }) => (
+            <Button
+              key={key}
+              size="sm"
+              variant={filter === key ? "default" : "outline"}
+              onClick={() => setFilter(key)}
+              className="h-7 text-xs"
+            >
+              {label}
+              {key !== "ALL" && (
+                <span className="ml-1 opacity-70">
+                  ({key === "PENDING" ? stats.pending : key === "ACCEPTED" ? stats.accepted : stats.rejected})
+                </span>
+              )}
+            </Button>
+          ))}
+        </div>
+        {!readOnly && (
           <Button
-            key={key}
             size="sm"
-            variant={filter === key ? "default" : "outline"}
-            onClick={() => setFilter(key)}
+            variant="destructive"
             className="h-7 text-xs"
+            onClick={() => setConfirmDeleteAll(true)}
           >
-            {label}
-            {key !== "ALL" && (
-              <span className="ml-1 opacity-70">
-                ({key === "PENDING" ? stats.pending : key === "ACCEPTED" ? stats.accepted : stats.rejected})
-              </span>
-            )}
+            {t("deleteAll")}
           </Button>
-        ))}
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -218,6 +248,26 @@ export function SubmissionsSplitView({ initialSubmissions, stats: initialStats, 
             )}
           </div>
         </div>
+      )}
+
+      {!readOnly && (
+        <Dialog open={confirmDeleteAll} onOpenChange={setConfirmDeleteAll}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("deleteAllTitle")}</DialogTitle>
+              <DialogDescription>{t("deleteAllDesc")}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setConfirmDeleteAll(false)}>
+                {tCommon("cancel")}
+              </Button>
+              <Button type="button" variant="destructive" onClick={handleDeleteAll} disabled={deletingAll}>
+                {deletingAll ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                {t("deleteAllConfirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

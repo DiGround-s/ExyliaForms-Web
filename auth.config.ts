@@ -27,10 +27,13 @@ export const authConfig: NextAuthConfig = {
           token.role = "SUPERADMIN"
         }
       }
+      if (!token.id && token.sub) {
+        token.id = token.sub
+      }
       return token
     },
     session({ session, token }) {
-      session.user.id = token.id as string
+      session.user.id = (token.sub as string) || (token.id as string)
       session.user.role = token.role as "USER" | "REVIEWER" | "ADMIN" | "SUPERADMIN"
       session.user.discordId = token.discordId as string
       return session

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useTranslations } from "next-intl"
-import { Loader2 } from "lucide-react"
+import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,6 +30,11 @@ interface FormData {
   maxSubmissionsPerUser: number | null
   reapplyCooldownDays: number | null
   dmEmbedConfig: FormEmbedConfig | null
+  globalDmDefaults?: {
+    received?: { title?: string; description?: string; footer?: string; color?: string }
+    accepted?: { title?: string; description?: string; footer?: string; color?: string }
+    rejected?: { title?: string; description?: string; cooldown?: string; footer?: string; color?: string }
+  }
   fields: FieldDef[]
   _count?: { submissions: number }
 }
@@ -59,6 +64,20 @@ interface FormEditorProps {
   formId: string
 }
 
+interface AcceptServerItem {
+  id: string
+  guildId: string
+  roleIdsText: string
+}
+
+function createAcceptServerItem(data?: Partial<Omit<AcceptServerItem, "id">>): AcceptServerItem {
+  return {
+    id: crypto.randomUUID(),
+    guildId: data?.guildId ?? "",
+    roleIdsText: data?.roleIdsText ?? "",
+  }
+}
+
 export function FormEditor({ formId }: FormEditorProps) {
   const router = useRouter()
   const t = useTranslations("admin.editor")
@@ -73,6 +92,8 @@ export function FormEditor({ formId }: FormEditorProps) {
   const [dmReceived, setDmReceived] = useState<EmbedData>({ title: "", description: "", footer: "", color: "#5865F2" })
   const [dmAccepted, setDmAccepted] = useState<EmbedData>({ title: "", description: "", footer: "", color: "#57F287" })
   const [dmRejected, setDmRejected] = useState<EmbedData>({ title: "", description: "", footer: "", color: "#ED4245", cooldown: "" })
+  const [joinOnAcceptEnabled, setJoinOnAcceptEnabled] = useState(false)
+  const [acceptServers, setAcceptServers] = useState<AcceptServerItem[]>([])
 
   useEffect(() => {
     fetch(`/api/admin/forms/${formId}`)
@@ -82,9 +103,34 @@ export function FormEditor({ formId }: FormEditorProps) {
         setFields(data.fields ?? [])
         setSections(data.sections ?? [])
         const cfg: FormEmbedConfig = data.dmEmbedConfig ?? {}
-        setDmReceived({ title: cfg.received?.title ?? "", description: cfg.received?.description ?? "", footer: cfg.received?.footer ?? "", color: cfg.received?.color ?? "#5865F2" })
-        setDmAccepted({ title: cfg.accepted?.title ?? "", description: cfg.accepted?.description ?? "", footer: cfg.accepted?.footer ?? "", color: cfg.accepted?.color ?? "#57F287" })
-        setDmRejected({ title: cfg.rejected?.title ?? "", description: cfg.rejected?.description ?? "", footer: cfg.rejected?.footer ?? "", color: cfg.rejected?.color ?? "#ED4245", cooldown: cfg.rejected?.cooldown ?? "" })
+        const defaults = data.globalDmDefaults ?? {}
+        setDmReceived({
+          title: cfg.received?.title ?? defaults.received?.title ?? "",
+          description: cfg.received?.description ?? defaults.received?.description ?? "",
+          footer: cfg.received?.footer ?? defaults.received?.footer ?? "",
+          color: cfg.received?.color ?? defaults.received?.color ?? "#5865F2",
+        })
+        setDmAccepted({
+          title: cfg.accepted?.title ?? defaults.accepted?.title ?? "",
+          description: cfg.accepted?.description ?? defaults.accepted?.description ?? "",
+          footer: cfg.accepted?.footer ?? defaults.accepted?.footer ?? "",
+          color: cfg.accepted?.color ?? defaults.accepted?.color ?? "#57F287",
+        })
+        setDmRejected({
+          title: cfg.rejected?.title ?? defaults.rejected?.title ?? "",
+          description: cfg.rejected?.description ?? defaults.rejected?.description ?? "",
+          footer: cfg.rejected?.footer ?? defaults.rejected?.footer ?? "",
+          color: cfg.rejected?.color ?? defaults.rejected?.color ?? "#ED4245",
+          cooldown: cfg.rejected?.cooldown ?? defaults.rejected?.cooldown ?? "",
+        })
+        setJoinOnAcceptEnabled(Boolean(cfg.joinOnAcceptEnabled))
+        setAcceptServers(
+          (cfg.acceptServers ?? []).map((server) => ({
+            ...createAcceptServerItem(),
+            guildId: server.guildId ?? "",
+            roleIdsText: (server.roleIds ?? []).join(", "),
+          })),
+        )
       })
     fetch(`/api/admin/forms/${formId}/submissions`)
       .then((r) => r.json())
@@ -176,23 +222,48 @@ export function FormEditor({ formId }: FormEditorProps) {
     }
   }
 
-  async function saveNotifications() {
+  function addServer() {
+    setAcceptServers((prev) => [...prev, createAcceptServerItem()])
+  }
+
+  function removeServer(id: string) {
+    setAcceptServers((prev) => prev.filter((server) => server.id !== id))
+  }
+
+  function updateServer(id: string, patch: Partial<Omit<AcceptServerItem, "id">>) {
+    setAcceptServers((prev) => prev.map((server) => (server.id === id ? { ...server, ...patch } : server)))
+  }
+
+  async function saveDiscord() {
     setSaving(true)
     try {
+      const normalizedServers = acceptServers
+        .map((server) => ({
+          guildId: server.guildId.trim(),
+          roleIds: Array.from(new Set(server.roleIdsText.split(",").map((id) => id.trim()).filter(Boolean))),
+        }))
+        .filter((server) => Boolean(server.guildId))
+
       const config: FormEmbedConfig = {
         received: { title: dmReceived.title, description: dmReceived.description, footer: dmReceived.footer, color: dmReceived.color },
         accepted: { title: dmAccepted.title, description: dmAccepted.description, footer: dmAccepted.footer, color: dmAccepted.color },
         rejected: { title: dmRejected.title, description: dmRejected.description, footer: dmRejected.footer, color: dmRejected.color, cooldown: dmRejected.cooldown },
+        joinOnAcceptEnabled,
+        acceptServers: normalizedServers,
       }
       const res = await fetch(`/api/admin/forms/${formId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dmEmbedConfig: config }),
       })
-      if (!res.ok) throw new Error()
-      toast.success(t("notificationsSaved"))
-    } catch {
-      toast.error(t("saveError"))
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null) as { error?: string; issues?: Array<{ message?: string }> } | null
+        const details = payload?.issues?.map((issue) => issue.message).filter(Boolean).join(" | ")
+        throw new Error(details || payload?.error || "Save failed")
+      }
+      toast.success(t("discordSaved"))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("saveError"))
     } finally {
       setSaving(false)
     }
@@ -242,7 +313,7 @@ export function FormEditor({ formId }: FormEditorProps) {
             {t("tabSubmissions")} {form._count?.submissions ? `(${form._count.submissions})` : ""}
           </TabsTrigger>
           <TabsTrigger value="users">{t("tabUsers")}</TabsTrigger>
-          <TabsTrigger value="notifications">{t("tabNotifications")}</TabsTrigger>
+          <TabsTrigger value="discord">{t("tabDiscord")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4 pt-4">
@@ -363,6 +434,7 @@ export function FormEditor({ formId }: FormEditorProps) {
         <TabsContent value="submissions" className="pt-4">
           {submissionsData ? (
             <SubmissionsSplitView
+              formId={formId}
               initialSubmissions={submissionsData.submissions}
               stats={submissionsData.stats}
             />
@@ -377,11 +449,11 @@ export function FormEditor({ formId }: FormEditorProps) {
           <FormUsers formId={formId} />
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-4 pt-4">
+        <TabsContent value="discord" className="space-y-4 pt-4">
           <Card>
             <CardHeader>
-              <CardTitle>{t("tabNotifications")}</CardTitle>
-              <CardDescription>{t("notificationsDesc")}</CardDescription>
+              <CardTitle>{t("tabDiscord")}</CardTitle>
+              <CardDescription>{t("discordDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <EmbedSection
@@ -408,9 +480,64 @@ export function FormEditor({ formId }: FormEditorProps) {
                 hasCooldown
                 tEmbed={tEmbed}
               />
+              <Separator />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">{t("joinOnAcceptTitle")}</p>
+                  <p className="text-xs text-muted-foreground">{t("joinOnAcceptDesc")}</p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={joinOnAcceptEnabled}
+                    onChange={(e) => setJoinOnAcceptEnabled(e.target.checked)}
+                  />
+                  {t("joinOnAcceptEnabled")}
+                </label>
+
+                {acceptServers.length === 0 && (
+                  <p className="text-xs text-muted-foreground">{t("noServers")}</p>
+                )}
+
+                <div className="space-y-3">
+                  {acceptServers.map((server) => (
+                    <div key={server.id} className="space-y-3 rounded-lg border p-3">
+                      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t("serverId")}</Label>
+                          <Input
+                            value={server.guildId}
+                            onChange={(e) => updateServer(server.id, { guildId: e.target.value })}
+                            placeholder="123456789012345678"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t("roleIds")}</Label>
+                          <Input
+                            value={server.roleIdsText}
+                            onChange={(e) => updateServer(server.id, { roleIdsText: e.target.value })}
+                            placeholder="111111111111111111, 222222222222222222"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button type="button" variant="outline" onClick={() => removeServer(server.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {t("removeServer")}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Button type="button" variant="outline" onClick={addServer}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("addServer")}
+                </Button>
+              </div>
             </CardContent>
           </Card>
-          <Button onClick={saveNotifications} disabled={saving}>
+          <Button onClick={saveDiscord} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t("save")}
           </Button>

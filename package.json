@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "prestart": "prisma migrate deploy",
-    "start": "next start --port ${PORT:-3000}",
+    "build": "node ./scripts/build.mjs",
+    "prestart": "node ./scripts/prisma-startup.mjs",
+    "start": "node ./scripts/start.mjs",
     "lint": "eslint"
   },
   "dependencies": {
@@ -15,12 +15,13 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
+    "@prisma/adapter-mariadb": "^7.4.2",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
-    "@types/pg": "^8.18.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.575.0",
+    "mariadb": "^3.4.5",
     "next": "16.1.6",
     "next-auth": "5.0.0-beta.30",
     "next-intl": "^4.8.3",

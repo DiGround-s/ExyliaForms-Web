@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  USER
+  REVIEWER
+  ADMIN
+  SUPERADMIN
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum FieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  NUMBER
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+  DATE
+  EMAIL
+  URL
+}
+
+model User {
+  id            String    @id @default(uuid())
+  discordId     String?   @unique
+  username      String?
+  globalName    String?
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  lastLoginAt   DateTime?
+
+  accounts    Account[]
+  forms       Form[]
+  submissions Submission[]
+  unlocks     FormUserUnlock[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model AppSetting {
+  key   String @id
+  value String
+
+  @@map("app_settings")
+}
+
+model Form {
+  id                    String     @id @default(uuid())
+  title                 String
+  description           String?
+  status                FormStatus @default(DRAFT)
+  isActive              Boolean    @default(true)
+  icon                  String?
+  maxSubmissionsPerUser Int?
+  reapplyCooldownDays   Int?
+  createdByUserId       String
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  dmEmbedConfig         Json?
+
+  createdBy   User           @relation(fields: [createdByUserId], references: [id])
+  fields      FormField[]
+  sections    FormSection[]
+  submissions Submission[]
+  unlocks     FormUserUnlock[]
+
+  @@map("forms")
+}
+
+model FormSection {
+  id     String @id @default(uuid())
+  formId String
+  title  String
+  order  Int
+
+  form   Form        @relation(fields: [formId], references: [id], onDelete: Cascade)
+  fields FormField[]
+
+  @@index([formId, order])
+  @@map("form_sections")
+}
+
+model FormField {
+  id         String    @id @default(uuid())
+  formId     String
+  sectionId  String?
+  key        String
+  type       FieldType
+  label      String
+  helpText   String?
+  required   Boolean   @default(false)
+  order      Int
+  configJson Json      @default("{}")
+
+  form      Form               @relation(fields: [formId], references: [id], onDelete: Cascade)
+  section   FormSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  answers   SubmissionAnswer[]
+
+  @@unique([formId, key])
+  @@index([formId, order])
+  @@map("form_fields")
+}
+
+model Submission {
+  id        String   @id @default(uuid())
+  formId    String
+  userId    String
+  createdAt DateTime @default(now())
+  ipHash    String?
+  userAgent String?
+  status    SubmissionStatus @default(PENDING)
+
+  form    Form               @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id])
+  answers SubmissionAnswer[]
+
+  @@index([formId, createdAt])
+  @@index([userId, createdAt])
+  @@map("submissions")
+}
+
+model FormUserUnlock {
+  formId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([formId, userId])
+  @@map("form_user_unlocks")
+}
+
+model SubmissionAnswer {
+  id           String @id @default(uuid())
+  submissionId String
+  fieldId      String
+  valueJson    Json
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  field      FormField  @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@map("submission_answers")
+}

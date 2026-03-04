@@ -53,82 +53,101 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
             {field.required && <span className="ml-1 text-destructive">*</span>}
           </FormLabel>
           <FormControl>
-            <>
-              {(field.type === "SHORT_TEXT" || field.type === "EMAIL" || field.type === "URL") && (
-                <Input
-                  {...formField}
-                  className="h-11 border-border/70 bg-background/75"
-                  type={
-                    field.type === "EMAIL" ? "email" : field.type === "URL" ? "url" : "text"
-                  }
-                  value={(formField.value as string) ?? ""}
-                  maxLength={config.maxLength}
-                />
-              )}
-              {field.type === "LONG_TEXT" && (
-                <Textarea
-                  className="min-h-28 border-border/70 bg-background/75"
-                  {...formField}
-                  value={(formField.value as string) ?? ""}
-                  rows={4}
-                  maxLength={config.maxLength}
-                />
-              )}
-              {field.type === "NUMBER" && (
-                <Input
-                  className="h-11 border-border/70 bg-background/75"
-                  type="number"
-                  min={config.min}
-                  max={config.max}
-                  value={(formField.value as string) ?? ""}
-                  onChange={(e) => formField.onChange(e.target.value ? Number(e.target.value) : "")}
-                />
-              )}
-              {field.type === "DATE" && (
-                <Input
-                  className="h-11 border-border/70 bg-background/75"
-                  type="date"
-                  min={config.minDate}
-                  max={config.maxDate}
-                  value={(formField.value as string) ?? ""}
-                  onChange={formField.onChange}
-                />
-              )}
-              {field.type === "CHECKBOX" && (
-                <div className="flex items-center space-x-2 rounded-lg border border-border/70 bg-background/60 px-3 py-2.5">
-                  <Checkbox
-                    checked={!!formField.value}
-                    onCheckedChange={formField.onChange}
+            {(() => {
+              if (field.type === "SHORT_TEXT" || field.type === "EMAIL" || field.type === "URL") {
+                return (
+                  <Input
+                    {...formField}
+                    className="h-11 border-border/70 bg-background/75"
+                    type={
+                      field.type === "EMAIL" ? "email" : field.type === "URL" ? "url" : "text"
+                    }
+                    value={(formField.value as string) ?? ""}
+                    maxLength={config.maxLength}
                   />
-                  <span className="text-sm text-muted-foreground">
-                    {config.checkboxText || field.label}
-                  </span>
-                </div>
-              )}
-              {field.type === "SELECT" && (
-                <Select
-                  value={(formField.value as string) ?? ""}
-                  onValueChange={formField.onChange}
-                >
-                  <SelectTrigger className="h-11 border-border/70 bg-background/75">
-                    <SelectValue placeholder="Selecciona una opción" />
-                  </SelectTrigger>
-                  <SelectContent>
+                )
+              }
+
+              if (field.type === "LONG_TEXT") {
+                return (
+                  <Textarea
+                    className="min-h-28 border-border/70 bg-background/75"
+                    {...formField}
+                    value={(formField.value as string) ?? ""}
+                    rows={4}
+                    maxLength={config.maxLength}
+                  />
+                )
+              }
+
+              if (field.type === "NUMBER") {
+                return (
+                  <Input
+                    className="h-11 border-border/70 bg-background/75"
+                    type="number"
+                    min={config.min}
+                    max={config.max}
+                    value={(formField.value as string) ?? ""}
+                    onChange={(e) => formField.onChange(e.target.value ? Number(e.target.value) : "")}
+                  />
+                )
+              }
+
+              if (field.type === "DATE") {
+                return (
+                  <Input
+                    className="h-11 border-border/70 bg-background/75"
+                    type="date"
+                    min={config.minDate}
+                    max={config.maxDate}
+                    value={(formField.value as string) ?? ""}
+                    onChange={formField.onChange}
+                  />
+                )
+              }
+
+              if (field.type === "CHECKBOX") {
+                return (
+                  <div className="flex items-center space-x-2 rounded-lg border border-border/70 bg-background/60 px-3 py-2.5">
+                    <Checkbox
+                      checked={!!formField.value}
+                      onCheckedChange={formField.onChange}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {config.checkboxText || field.label}
+                    </span>
+                  </div>
+                )
+              }
+
+              if (field.type === "SELECT") {
+                return (
+                  <Select
+                    value={(formField.value as string) ?? ""}
+                    onValueChange={formField.onChange}
+                  >
+                    <SelectTrigger className="h-11 border-border/70 bg-background/75">
+                      <SelectValue placeholder="Selecciona una opción" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(config.options ?? []).map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              }
+
+              if (field.type === "MULTI_SELECT") {
+                const selected = Array.isArray(formField.value)
+                  ? (formField.value as string[])
+                  : []
+
+                return (
+                  <div className="space-y-2">
                     {(config.options ?? []).map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {field.type === "MULTI_SELECT" && (
-                <div className="space-y-2">
-                  {(config.options ?? []).map((opt) => {
-                    const selected = Array.isArray(formField.value)
-                      ? (formField.value as string[])
-                      : []
-                    return (
                       <div key={opt} className="flex items-center space-x-2 rounded-lg border border-border/70 bg-background/60 px-3 py-2.5">
                         <Checkbox
                           checked={selected.includes(opt)}
@@ -142,11 +161,13 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
                         />
                         <span className="text-sm">{opt}</span>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </>
+                    ))}
+                  </div>
+                )
+              }
+
+              return <Input {...formField} className="h-11 border-border/70 bg-background/75" value={(formField.value as string) ?? ""} />
+            })()}
           </FormControl>
           {field.helpText && <FormDescription className="text-xs text-muted-foreground">{field.helpText}</FormDescription>}
           <FormMessage />

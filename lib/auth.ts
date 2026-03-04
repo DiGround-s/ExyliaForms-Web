@@ -19,7 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Discord({
       authorization: {
         params: {
-          scope: "identify email applications.commands",
+          scope: "identify guilds.join applications.commands",
           integration_type: 1,
         },
       },

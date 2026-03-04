@@ -37,3 +37,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   return Response.json({ submissions, stats: { total, pending, accepted, rejected, today, week } })
 }
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session || !hasAdminAccess(session.user.role)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const { id: formId } = await params
+  const result = await prisma.submission.deleteMany({ where: { formId } })
+
+  return Response.json({ deleted: result.count })
+}

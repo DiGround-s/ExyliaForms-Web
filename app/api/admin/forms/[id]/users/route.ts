@@ -46,3 +46,29 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   return Response.json(Array.from(byUser.values()))
 }
+
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session || !hasAdminAccess(session.user.role)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const { id: formId } = await params
+
+  const userRows = await prisma.submission.findMany({
+    where: { formId },
+    select: { userId: true },
+    distinct: ["userId"],
+  })
+
+  if (userRows.length === 0) {
+    return Response.json({ unlocked: 0 })
+  }
+
+  await prisma.formUserUnlock.createMany({
+    data: userRows.map((row) => ({ formId, userId: row.userId })),
+    skipDuplicates: true,
+  })
+
+  return Response.json({ unlocked: userRows.length })
+}

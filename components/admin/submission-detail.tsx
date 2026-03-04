@@ -1,14 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, XCircle, Clock, Trash2, Loader2 } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { LOCALE_META } from "@/i18n/locales"
 
 type SubmissionStatus = "PENDING" | "ACCEPTED" | "REJECTED"
+type ConfirmStatus = "ACCEPTED" | "REJECTED"
 
 interface SubmissionAnswer {
   field: { key: string; label: string; section: { title: string } | null }
@@ -83,6 +86,7 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
   const tSub = useTranslations("submissions")
   const locale = useLocale()
   const bcp47 = LOCALE_META[locale as keyof typeof LOCALE_META]?.bcp47 ?? locale
+  const [confirmStatus, setConfirmStatus] = useState<ConfirmStatus | null>(null)
 
   const statusLabel: Record<SubmissionStatus, string> = {
     PENDING: t("statusPending"),
@@ -118,7 +122,7 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
               <Button
                 size="sm"
                 variant={submission.status === "ACCEPTED" ? "default" : "outline"}
-                onClick={() => onStatusChange(submission.id, "ACCEPTED")}
+                onClick={() => setConfirmStatus("ACCEPTED")}
                 disabled={submission.status === "ACCEPTED"}
               >
                 <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
@@ -127,7 +131,7 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
               <Button
                 size="sm"
                 variant={submission.status === "REJECTED" ? "destructive" : "outline"}
-                onClick={() => onStatusChange(submission.id, "REJECTED")}
+                onClick={() => setConfirmStatus("REJECTED")}
                 disabled={submission.status === "REJECTED"}
               >
                 <XCircle className="mr-1.5 h-3.5 w-3.5" />
@@ -159,6 +163,36 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
           )}
         </div>
       </div>
+
+      {onStatusChange && (
+        <Dialog open={confirmStatus !== null} onOpenChange={(open) => { if (!open) setConfirmStatus(null) }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {confirmStatus === "ACCEPTED" ? t("confirmAcceptTitle") : t("confirmRejectTitle")}
+              </DialogTitle>
+              <DialogDescription>
+                {confirmStatus === "ACCEPTED" ? t("confirmAcceptDesc") : t("confirmRejectDesc")}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmStatus(null)}>
+                {tCommon("cancel")}
+              </Button>
+              <Button
+                variant={confirmStatus === "REJECTED" ? "destructive" : "default"}
+                onClick={() => {
+                  if (!confirmStatus) return
+                  onStatusChange?.(submission.id, confirmStatus)
+                  setConfirmStatus(null)
+                }}
+              >
+                {confirmStatus === "ACCEPTED" ? t("accept") : t("reject")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Separator />
 

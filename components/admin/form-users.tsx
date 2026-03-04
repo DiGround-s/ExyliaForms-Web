@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 type SubmissionStatus = "PENDING" | "ACCEPTED" | "REJECTED"
 
@@ -39,6 +40,8 @@ const STATUS_VARIANT: Record<SubmissionStatus, "default" | "secondary" | "destru
 export function FormUsers({ formId }: { formId: string }) {
   const [users, setUsers] = useState<UserEntry[] | null>(null)
   const [toggling, setToggling] = useState<string | null>(null)
+  const [unlockingAll, setUnlockingAll] = useState(false)
+  const [confirmUnlockAll, setConfirmUnlockAll] = useState(false)
 
   useEffect(() => {
     fetch(`/api/admin/forms/${formId}/users`)
@@ -64,6 +67,21 @@ export function FormUsers({ formId }: { formId: string }) {
     setToggling(null)
   }
 
+  async function handleUnlockAll() {
+    setUnlockingAll(true)
+    const res = await fetch(`/api/admin/forms/${formId}/users`, { method: "POST" })
+    setUnlockingAll(false)
+
+    if (!res.ok) {
+      toast.error("Error al desbloquear usuarios")
+      return
+    }
+
+    setUsers((prev) => prev?.map((u) => ({ ...u, unlocked: true })) ?? null)
+    toast.success("Todos los usuarios fueron desbloqueados")
+    setConfirmUnlockAll(false)
+  }
+
   if (!users) {
     return (
       <div className="flex h-40 items-center justify-center">
@@ -81,8 +99,16 @@ export function FormUsers({ formId }: { formId: string }) {
   }
 
   return (
-    <div className="rounded-md border divide-y">
-      {users.map((entry) => {
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" onClick={() => setConfirmUnlockAll(true)}>
+          <LockOpen className="mr-1.5 h-3.5 w-3.5" />
+          Desbloquear a todos
+        </Button>
+      </div>
+
+      <div className="rounded-md border divide-y">
+        {users.map((entry) => {
         const name = entry.user.globalName ?? entry.user.username ?? entry.user.discordId ?? "Usuario"
         const initial = name[0]?.toUpperCase() ?? "U"
         const loading = toggling === entry.user.id
@@ -131,7 +157,28 @@ export function FormUsers({ formId }: { formId: string }) {
             </Button>
           </div>
         )
-      })}
+        })}
+      </div>
+
+      <Dialog open={confirmUnlockAll} onOpenChange={setConfirmUnlockAll}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Desbloquear a todos</DialogTitle>
+            <DialogDescription>
+              Se desbloquearán todos los usuarios que hayan respondido este formulario para que puedan volver a aplicar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmUnlockAll(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleUnlockAll} disabled={unlockingAll}>
+              {unlockingAll && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

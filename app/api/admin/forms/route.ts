@@ -36,11 +36,24 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid data", issues: parsed.error.issues }, { status: 400 })
   }
 
+  const creator = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { id: session.user.id },
+        ...(session.user.discordId ? [{ discordId: session.user.discordId }] : []),
+      ],
+    },
+    select: { id: true },
+  })
+  if (!creator) {
+    return Response.json({ error: "Session user not found in database" }, { status: 400 })
+  }
+
   const form = await prisma.form.create({
     data: {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
-      createdByUserId: session.user.id,
+      createdByUserId: creator.id,
     },
   })
 

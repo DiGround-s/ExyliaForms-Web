@@ -4,10 +4,20 @@ export interface FormEmbedConfig {
   received?: { title?: string; description?: string; footer?: string; color?: string }
   accepted?: { title?: string; description?: string; footer?: string; color?: string }
   rejected?: { title?: string; description?: string; cooldown?: string; footer?: string; color?: string }
+  joinOnAcceptEnabled?: boolean
+  acceptServers?: Array<{ guildId?: string; roleIds?: string[] }>
+}
+
+export interface DiscordConfigIssue {
+  guildId: string
+  roleId?: string
+  code: string
+  message: string
 }
 
 const DISCORD_API = "https://discord.com/api/v10"
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
+const MANAGE_ROLES_PERMISSION = BigInt("268435456")
 
 function appUrl(): string {
   try {
@@ -43,6 +53,165 @@ async function sendMessage(channelId: string, payload: object): Promise<void> {
   })
 }
 
+async function addMemberToGuild(guildId: string, discordUserId: string, userAccessToken: string): Promise<void> {
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordUserId}`, {
+    method: "PUT",
+    headers: { Authorization: `Bot ${BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ access_token: userAccessToken }),
+  })
+  if (!res.ok) {
+    const details = await res.text().catch(() => "")
+    throw new Error(`Guild member add error: ${res.status} ${details}`)
+  }
+}
+
+async function addRoleToMember(guildId: string, discordUserId: string, roleId: string): Promise<void> {
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`, {
+    method: "PUT",
+    headers: { Authorization: `Bot ${BOT_TOKEN}` },
+  })
+  if (!res.ok) {
+    const details = await res.text().catch(() => "")
+    throw new Error(`Role add error: ${res.status} ${details}`)
+  }
+}
+
+async function fetchBotUserId(): Promise<string | null> {
+  if (!BOT_TOKEN) return null
+  const res = await fetch(`${DISCORD_API}/users/@me`, {
+    headers: { Authorization: `Bot ${BOT_TOKEN}` },
+  })
+  if (!res.ok) return null
+  const data = (await res.json()) as { id?: string }
+  return data.id ?? null
+}
+
+interface DiscordRole {
+  id: string
+  name: string
+  managed: boolean
+  permissions: string
+  position: number
+}
+
+interface DiscordGuildMember {
+  roles: string[]
+}
+
+export async function validateDiscordJoinConfig(embedConfig?: FormEmbedConfig | null): Promise<DiscordConfigIssue[]> {
+  const isEnabled = embedConfig?.joinOnAcceptEnabled
+  const servers = (embedConfig?.acceptServers ?? [])
+    .map((s) => ({
+      guildId: (s.guildId ?? "").trim(),
+      roleIds: Array.from(new Set((s.roleIds ?? []).map((id) => id.trim()).filter(Boolean))),
+    }))
+    .filter((s) => Boolean(s.guildId))
+
+  if (!isEnabled || servers.length === 0) return []
+
+  if (!BOT_TOKEN) {
+    return [{ guildId: "*", code: "MISSING_BOT_TOKEN", message: "Discord bot token is missing (DISCORD_BOT_TOKEN)." }]
+  }
+
+  const botUserId = await fetchBotUserId()
+  if (!botUserId) {
+    return [{ guildId: "*", code: "INVALID_BOT_TOKEN", message: "Discord bot token is invalid or unauthorized." }]
+  }
+
+  const issues: DiscordConfigIssue[] = []
+
+  for (const server of servers) {
+    const guildRes = await fetch(`${DISCORD_API}/guilds/${server.guildId}`, {
+      headers: { Authorization: `Bot ${BOT_TOKEN}` },
+    })
+    if (!guildRes.ok) {
+      issues.push({
+        guildId: server.guildId,
+        code: "UNKNOWN_GUILD",
+        message: `Server ${server.guildId}: the bot cannot access this guild (Unknown Guild or not invited).`,
+      })
+      continue
+    }
+
+    const [rolesRes, botMemberRes] = await Promise.all([
+      fetch(`${DISCORD_API}/guilds/${server.guildId}/roles`, {
+        headers: { Authorization: `Bot ${BOT_TOKEN}` },
+      }),
+      fetch(`${DISCORD_API}/guilds/${server.guildId}/members/${botUserId}`, {
+        headers: { Authorization: `Bot ${BOT_TOKEN}` },
+      }),
+    ])
+
+    if (!rolesRes.ok) {
+      issues.push({
+        guildId: server.guildId,
+        code: "ROLES_ACCESS_FAILED",
+        message: `Server ${server.guildId}: unable to read guild roles with current bot permissions.`,
+      })
+      continue
+    }
+
+    if (!botMemberRes.ok) {
+      issues.push({
+        guildId: server.guildId,
+        code: "BOT_NOT_IN_GUILD",
+        message: `Server ${server.guildId}: bot member is not available in this guild.`,
+      })
+      continue
+    }
+
+    const roles = (await rolesRes.json()) as DiscordRole[]
+    const botMember = (await botMemberRes.json()) as DiscordGuildMember
+    const botRoles = roles.filter((role) => botMember.roles.includes(role.id))
+    const botTopPosition = botRoles.reduce((max, role) => Math.max(max, role.position), 0)
+    const hasManageRoles = botRoles.some((role) => (BigInt(role.permissions) & MANAGE_ROLES_PERMISSION) === MANAGE_ROLES_PERMISSION)
+
+    if (!hasManageRoles && server.roleIds.length > 0) {
+      issues.push({
+        guildId: server.guildId,
+        code: "MISSING_MANAGE_ROLES",
+        message: `Server ${server.guildId}: bot is missing Manage Roles permission.`,
+      })
+    }
+
+    for (const roleId of server.roleIds) {
+      const role = roles.find((r) => r.id === roleId)
+      if (!role) {
+        issues.push({
+          guildId: server.guildId,
+          roleId,
+          code: "ROLE_NOT_FOUND",
+          message: `Server ${server.guildId}: role ${roleId} was not found.`,
+        })
+        continue
+      }
+
+      if (role.managed) {
+        issues.push({
+          guildId: server.guildId,
+          roleId,
+          code: "ROLE_MANAGED",
+          message: `Server ${server.guildId}: role ${roleId} is managed by an integration and cannot be assigned manually.`,
+        })
+        continue
+      }
+
+      if (!hasManageRoles) continue
+
+      if (role.position >= botTopPosition) {
+        issues.push({
+          guildId: server.guildId,
+          roleId,
+          code: "ROLE_HIERARCHY",
+          message: `Server ${server.guildId}: role ${roleId} is above or equal to the bot's highest role.`,
+        })
+      }
+    }
+  }
+
+  return issues
+}
+
 function dispatch(discordUserId: string | null | undefined, buildPayload: () => Promise<object>): void {
   if (!BOT_TOKEN || !discordUserId) return
   ;(async () => {
@@ -51,6 +220,42 @@ function dispatch(discordUserId: string | null | undefined, buildPayload: () => 
       await sendMessage(channelId, payload)
     } catch {}
   })()
+}
+
+export async function syncAcceptedDiscordMembership({
+  discordUserId,
+  userAccessToken,
+  embedConfig,
+}: {
+  discordUserId: string | null | undefined
+  userAccessToken: string | null | undefined
+  embedConfig?: FormEmbedConfig | null
+}): Promise<void> {
+  const isEnabled = embedConfig?.joinOnAcceptEnabled
+  const rawServers = embedConfig?.acceptServers ?? []
+  const servers = rawServers
+    .map((s) => ({
+      guildId: (s.guildId ?? "").trim(),
+      roleIds: Array.from(new Set((s.roleIds ?? []).map((id) => id.trim()).filter(Boolean))),
+    }))
+    .filter((s) => Boolean(s.guildId))
+
+  if (!BOT_TOKEN || !discordUserId || !userAccessToken || !isEnabled || servers.length === 0) return
+
+  for (const server of servers) {
+    try {
+      await addMemberToGuild(server.guildId, discordUserId, userAccessToken)
+      for (const roleId of server.roleIds) {
+        await addRoleToMember(server.guildId, discordUserId, roleId)
+      }
+    } catch (error) {
+      console.error("Discord membership sync failed", {
+        guildId: server.guildId,
+        discordUserId,
+        error,
+      })
+    }
+  }
 }
 
 export function notifySubmissionReceived({

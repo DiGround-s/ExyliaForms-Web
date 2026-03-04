@@ -66,6 +66,7 @@ export default async function AdminSubmissionsPage({ params }: Params) {
       </div>
 
       <SubmissionsSplitView
+        formId={formId}
         initialSubmissions={submissions.map((s: typeof submissions[number]) => ({
           ...s,
           createdAt: s.createdAt.toISOString(),
