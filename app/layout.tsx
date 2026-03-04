@@ -7,6 +7,8 @@ import { getSettings } from "@/lib/settings"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
 
+export const dynamic = "force-dynamic"
+
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] })
