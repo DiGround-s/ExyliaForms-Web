@@ -46,7 +46,7 @@ export async function PUT(req: Request) {
     Object.entries(parsed.data).filter(([, v]) => v !== undefined) as [string, string][]
   )
   await setSettings(updates)
-  revalidateTag(SETTINGS_CACHE_TAG)
+  revalidateTag(SETTINGS_CACHE_TAG, {})
 
   return Response.json({ ok: true })
 }

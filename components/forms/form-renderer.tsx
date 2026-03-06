@@ -68,7 +68,7 @@ function buildSchema(
         ? z.string().min(1, requiredMsg).url(urlMsg)
         : z.string().url(urlMsg)
     } else if (field.type === "NUMBER") {
-      let s = z.number({ invalid_type_error: requiredMsg })
+      let s = z.number({ message: requiredMsg })
       const minVal = field.configJson.min as number | undefined
       const maxVal = field.configJson.max as number | undefined
       if (minVal !== undefined) s = s.min(minVal, minValueMsg(minVal))
@@ -78,7 +78,7 @@ function buildSchema(
       schema = field.required ? z.string().min(1, requiredMsg) : z.string()
     } else if (field.type === "CHECKBOX") {
       schema = field.required
-        ? z.literal(true, { errorMap: () => ({ message: requiredMsg }) })
+        ? z.literal(true, { error: requiredMsg })
         : z.boolean()
     } else if (field.type === "SELECT") {
       schema = field.required ? z.string().min(1, requiredMsg) : z.string()
