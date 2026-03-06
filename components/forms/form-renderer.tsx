@@ -88,6 +88,7 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
   const navigatingRef = useRef(false)
   const [hasDraft, setHasDraft] = useState(false)
   const [step, setStep] = useState(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const steps = useMemo(() => {
     if (sections.length === 0) {
@@ -167,8 +168,13 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  async function onSubmit(data: Record<string, unknown>) {
+  async function handleSubmit() {
+    const valid = await form.trigger()
+    if (!valid) return
+
+    setIsSubmitting(true)
     try {
+      const data = form.getValues()
       const res = await fetch(`/api/forms/${formId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -184,6 +190,8 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
       router.push("/app/submissions")
     } catch {
       toast.error(t("connectionError"))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -219,7 +227,7 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
           {currentFields.map((field) => (
             <FieldRenderer
               key={field.id}
@@ -241,8 +249,8 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="button" disabled={isSubmitting} onClick={handleSubmit}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {t("submit")}
               </Button>
             )}

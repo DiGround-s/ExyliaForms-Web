@@ -68,7 +68,7 @@ export default async function FormsPage() {
                     </div>
                     {!form.isActive && <Badge variant="outline">{t("statusClosed")}</Badge>}
                   </div>
-                  <CardDescription className="line-clamp-2 text-sm">
+                  <CardDescription className="line-clamp-2 text-sm whitespace-pre-line">
                     {form.description || t("noDescription")}
                   </CardDescription>
                 </CardHeader>

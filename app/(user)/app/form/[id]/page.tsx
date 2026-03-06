@@ -73,7 +73,7 @@ export default async function FormPage({ params }: Params) {
           </Badge>
         </div>
         {form.description && (
-          <p className="mt-2 text-muted-foreground">{form.description}</p>
+          <p className="mt-2 whitespace-pre-line text-muted-foreground">{form.description}</p>
         )}
       </div>
 
