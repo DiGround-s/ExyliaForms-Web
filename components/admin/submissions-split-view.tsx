@@ -11,17 +11,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { SubmissionDetail } from "./submission-detail"
 import { LOCALE_META } from "@/i18n/locales"
 
-type SubmissionStatus = "PENDING" | "ACCEPTED" | "REJECTED"
+type SubmissionStatus = "PENDING" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED"
 type Filter = "ALL" | SubmissionStatus
 
 const STATUS_DOT: Record<SubmissionStatus, string> = {
   PENDING: "bg-yellow-400",
+  UNDER_REVIEW: "bg-blue-400",
   ACCEPTED: "bg-green-500",
   REJECTED: "bg-red-500",
 }
 
 const STATUS_BADGE: Record<SubmissionStatus, string> = {
   PENDING: "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
+  UNDER_REVIEW: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
   ACCEPTED: "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300",
   REJECTED: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
 }
@@ -45,6 +47,7 @@ interface Submission {
 interface Stats {
   total: number
   pending: number
+  underReview: number
   accepted: number
   rejected: number
   today: number
@@ -81,6 +84,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
   const FILTERS: Array<{ key: Filter; label: string; count?: number }> = [
     { key: "ALL", label: t("filterAll") },
     { key: "PENDING", label: t("filterPending"), count: stats.pending },
+    { key: "UNDER_REVIEW", label: t("filterUnderReview"), count: stats.underReview },
     { key: "ACCEPTED", label: t("filterAccepted"), count: stats.accepted },
     { key: "REJECTED", label: t("filterRejected"), count: stats.rejected },
   ]
@@ -112,9 +116,11 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
     setStats((st) => {
       const next = { ...st }
       if (prev.status === "PENDING") next.pending = Math.max(0, next.pending - 1)
+      else if (prev.status === "UNDER_REVIEW") next.underReview = Math.max(0, next.underReview - 1)
       else if (prev.status === "ACCEPTED") next.accepted = Math.max(0, next.accepted - 1)
       else if (prev.status === "REJECTED") next.rejected = Math.max(0, next.rejected - 1)
       if (status === "PENDING") next.pending++
+      else if (status === "UNDER_REVIEW") next.underReview++
       else if (status === "ACCEPTED") next.accepted++
       else if (status === "REJECTED") next.rejected++
       return next
@@ -134,6 +140,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
     setStats((st) => {
       const next = { ...st, total: Math.max(0, st.total - 1) }
       if (sub.status === "PENDING") next.pending = Math.max(0, next.pending - 1)
+      else if (sub.status === "UNDER_REVIEW") next.underReview = Math.max(0, next.underReview - 1)
       else if (sub.status === "ACCEPTED") next.accepted = Math.max(0, next.accepted - 1)
       else if (sub.status === "REJECTED") next.rejected = Math.max(0, next.rejected - 1)
       return next
@@ -162,7 +169,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
     if (!res.ok) return
 
     setSubmissions([])
-    setStats((st) => ({ ...st, total: 0, pending: 0, accepted: 0, rejected: 0, today: 0, week: 0 }))
+    setStats((st) => ({ ...st, total: 0, pending: 0, underReview: 0, accepted: 0, rejected: 0, today: 0, week: 0 }))
     setSelectedId(null)
     setMobileShowDetail(false)
     setConfirmDeleteAll(false)
@@ -171,6 +178,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
   const statsRows = [
     { label: t("statsTotal"), value: stats.total },
     { label: t("statsPending"), value: stats.pending },
+    { label: t("statsUnderReview"), value: stats.underReview },
     { label: t("statsAccepted"), value: stats.accepted },
     { label: t("statsRejected"), value: stats.rejected },
     { label: t("statsToday"), value: stats.today },
@@ -240,7 +248,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
                     </p>
                     <div className="mt-1 flex items-center gap-1.5">
                       <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none", STATUS_BADGE[sub.status])}>
-                        {sub.status === "PENDING" ? t("statusPending") : sub.status === "ACCEPTED" ? t("statusAccepted") : t("statusRejected")}
+                        {sub.status === "PENDING" ? t("statusPending") : sub.status === "UNDER_REVIEW" ? t("statusUnderReview") : sub.status === "ACCEPTED" ? t("statusAccepted") : t("statusRejected")}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
                         {tSub("answersCount", { count: sub.answers.length })}
@@ -258,7 +266,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
         {statsRows.map(({ label, value }) => (
           <div key={label} className="rounded-lg border border-border/70 bg-card/70 p-2.5 text-center shadow-sm sm:p-3">
             <p className="text-xl font-bold sm:text-2xl">{value}</p>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-type SubmissionStatus = "PENDING" | "ACCEPTED" | "REJECTED"
+type SubmissionStatus = "PENDING" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED"
 
 interface UserEntry {
   user: {
@@ -27,12 +27,14 @@ interface UserEntry {
 
 const STATUS_LABEL: Record<SubmissionStatus, string> = {
   PENDING: "Pendiente",
+  UNDER_REVIEW: "En revisión",
   ACCEPTED: "Aceptado",
   REJECTED: "Rechazado",
 }
 
-const STATUS_VARIANT: Record<SubmissionStatus, "default" | "secondary" | "destructive"> = {
+const STATUS_VARIANT: Record<SubmissionStatus, "default" | "secondary" | "destructive" | "outline"> = {
   PENDING: "secondary",
+  UNDER_REVIEW: "outline",
   ACCEPTED: "default",
   REJECTED: "destructive",
 }

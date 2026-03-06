@@ -32,6 +32,11 @@ const updateFormSchema = z.object({
       guildId: snowflakeSchema,
       roleIds: z.array(snowflakeSchema).optional(),
     })).optional(),
+    logChannelId: snowflakeSchema.optional(),
+    logReceivedChannelId: snowflakeSchema.optional(),
+    logReceivedMessage: z.string().max(2000).optional(),
+    logAcceptedMessage: z.string().max(2000).optional(),
+    logRejectedMessage: z.string().max(2000).optional(),
   }).nullable().optional(),
 })
 

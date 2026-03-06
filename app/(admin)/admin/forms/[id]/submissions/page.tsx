@@ -44,9 +44,10 @@ export default async function AdminSubmissionsPage({ params }: Params) {
     orderBy: { createdAt: "desc" },
   })
 
-  const [total, pending, accepted, rejected, today, week] = await Promise.all([
+  const [total, pending, underReview, accepted, rejected, today, week] = await Promise.all([
     prisma.submission.count({ where: { formId } }),
     prisma.submission.count({ where: { formId, status: "PENDING" } }),
+    prisma.submission.count({ where: { formId, status: "UNDER_REVIEW" } }),
     prisma.submission.count({ where: { formId, status: "ACCEPTED" } }),
     prisma.submission.count({ where: { formId, status: "REJECTED" } }),
     prisma.submission.count({ where: { formId, createdAt: { gte: startOfToday } } }),
@@ -71,7 +72,7 @@ export default async function AdminSubmissionsPage({ params }: Params) {
           ...s,
           createdAt: s.createdAt.toISOString(),
         }))}
-        stats={{ total, pending, accepted, rejected, today, week }}
+        stats={{ total, pending, underReview, accepted, rejected, today, week }}
         readOnly={isReviewer}
       />
     </div>

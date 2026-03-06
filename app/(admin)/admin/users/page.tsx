@@ -9,25 +9,32 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { UserRoleToggle } from "@/components/admin/user-role-toggle"
 import { UserSearchInput } from "@/components/admin/user-search-input"
+import { UserSortHeader } from "@/components/admin/user-sort-header"
 import { Suspense } from "react"
+import type { Prisma } from "@prisma/client"
+
+const VALID_SORTS = ["globalName", "role", "submissions", "lastLoginAt", "createdAt"] as const
+type SortKey = (typeof VALID_SORTS)[number]
+
+function buildOrderBy(sort: SortKey, dir: "asc" | "desc"): Prisma.UserOrderByWithRelationInput[] {
+  if (sort === "submissions") return [{ submissions: { _count: dir } }]
+  return [{ [sort]: dir }]
+}
 
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>
+  searchParams: Promise<{ q?: string; sort?: string; dir?: string }>
 }) {
-  const { q } = await searchParams
+  const { q, sort: rawSort, dir: rawDir } = await searchParams
   const search = q?.trim() ?? ""
+  const sort: SortKey = VALID_SORTS.includes(rawSort as SortKey) ? (rawSort as SortKey) : "lastLoginAt"
+  const dir: "asc" | "desc" = rawDir === "asc" ? "asc" : "desc"
 
   const [session, users] = await Promise.all([
     auth(),
     prisma.user.findMany({
-      orderBy: [
-        {
-          role: "desc",
-        },
-        { lastLoginAt: "desc" },
-      ],
+      orderBy: buildOrderBy(sort, dir),
       where: search
         ? {
             OR: [
@@ -81,11 +88,21 @@ export default async function AdminUsersPage({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Usuario</TableHead>
-                <TableHead>Rol</TableHead>
-                <TableHead>Respuestas</TableHead>
-                <TableHead>Último acceso</TableHead>
-                <TableHead>Registro</TableHead>
+                <Suspense fallback={<TableHead>Usuario</TableHead>}>
+                  <UserSortHeader label="Usuario" sortKey="globalName" currentSort={sort} currentDir={dir} />
+                </Suspense>
+                <Suspense fallback={<TableHead>Rol</TableHead>}>
+                  <UserSortHeader label="Rol" sortKey="role" currentSort={sort} currentDir={dir} />
+                </Suspense>
+                <Suspense fallback={<TableHead>Respuestas</TableHead>}>
+                  <UserSortHeader label="Respuestas" sortKey="submissions" currentSort={sort} currentDir={dir} />
+                </Suspense>
+                <Suspense fallback={<TableHead>Último acceso</TableHead>}>
+                  <UserSortHeader label="Último acceso" sortKey="lastLoginAt" currentSort={sort} currentDir={dir} />
+                </Suspense>
+                <Suspense fallback={<TableHead>Registro</TableHead>}>
+                  <UserSortHeader label="Registro" sortKey="createdAt" currentSort={sort} currentDir={dir} />
+                </Suspense>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -116,10 +133,18 @@ export default async function AdminUsersPage({
                     </TableCell>
                     <TableCell>{user._count.submissions}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : "—"}
+                      {user.lastLoginAt ? (
+                        <div>
+                          <p>{new Date(user.lastLoginAt).toLocaleDateString("es-ES")}</p>
+                          <p className="text-xs">{new Date(user.lastLoginAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</p>
+                        </div>
+                      ) : "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      <div>
+                        <p>{new Date(user.createdAt).toLocaleDateString("es-ES")}</p>
+                        <p className="text-xs">{new Date(user.createdAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</p>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">

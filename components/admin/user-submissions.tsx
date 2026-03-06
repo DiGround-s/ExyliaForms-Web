@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { getFormIcon } from "@/lib/form-icons"
 
-type SubmissionStatus = "PENDING" | "ACCEPTED" | "REJECTED"
+type SubmissionStatus = "PENDING" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED"
 
 interface Answer {
   field: { key: string; label: string; section: { title: string } | null }
@@ -26,12 +26,14 @@ interface Submission {
 
 const STATUS_LABEL: Record<SubmissionStatus, string> = {
   PENDING: "Pendiente",
+  UNDER_REVIEW: "En revisión",
   ACCEPTED: "Aceptado",
   REJECTED: "Rechazado",
 }
 
-const STATUS_VARIANT: Record<SubmissionStatus, "default" | "secondary" | "destructive"> = {
+const STATUS_VARIANT: Record<SubmissionStatus, "default" | "secondary" | "destructive" | "outline"> = {
   PENDING: "secondary",
+  UNDER_REVIEW: "outline",
   ACCEPTED: "default",
   REJECTED: "destructive",
 }

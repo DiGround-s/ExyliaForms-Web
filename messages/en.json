@@ -110,6 +110,7 @@
     "submissions": {
       "filterAll": "All",
       "filterPending": "Pending",
+      "filterUnderReview": "Under Review",
       "filterAccepted": "Accepted",
       "filterRejected": "Rejected",
       "noSubmissions": "No responses yet.",
@@ -117,6 +118,7 @@
       "selectOne": "Select a response",
       "statsTotal": "Total",
       "statsPending": "Pending",
+      "statsUnderReview": "Under Review",
       "statsAccepted": "Accepted",
       "statsRejected": "Rejected",
       "statsToday": "Today",
@@ -124,6 +126,7 @@
       "responses": "Responses",
       "accept": "Accept",
       "reject": "Reject",
+      "underReviewAction": "Under Review",
       "deleteAll": "Delete all",
       "deleteAllTitle": "Delete all responses",
       "deleteAllDesc": "This action will delete all responses for this form and cannot be undone.",
@@ -137,6 +140,7 @@
       "pendingAction": "Pending",
       "noAnswers": "No answers recorded.",
       "statusPending": "Pending",
+      "statusUnderReview": "Under Review",
       "statusAccepted": "Accepted",
       "statusRejected": "Rejected",
       "refresh": "Refresh"
@@ -190,8 +194,11 @@
       "activate": "Activate",
       "deactivate": "Deactivate",
       "logChannelTitle": "Log channel",
-      "logChannelDesc": "Send a message to a Discord channel when a submission is accepted or rejected.",
+      "logReceivedChannelTitle": "Log channel — Submission received",
+      "logReceivedChannelDesc": "Send a message to this channel when a user submits a form.",
+      "logChannelDesc": "Send a message to this channel when a submission is accepted or rejected.",
       "logChannelId": "Channel ID",
+      "logReceivedMessage": "Received message",
       "logAcceptedMessage": "Accepted message",
       "logRejectedMessage": "Rejected message"
     },
@@ -324,7 +331,9 @@
       "embedColor": "Color",
       "vars": "Available variables",
       "previewTitle": "Preview",
-      "noFooter": "No footer"
+      "noFooter": "No footer",
+      "logFormCreatedChannel": "Log channel — Form created",
+      "logFormCreatedChannelDesc": "Discord channel ID where each new form creation will be logged. Leave empty to disable."
     }
   },
   "fieldTypes": {

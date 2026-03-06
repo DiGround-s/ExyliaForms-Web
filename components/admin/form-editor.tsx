@@ -17,7 +17,7 @@ import { FieldEditor, type FieldDef, type SectionDef } from "./field-editor"
 import { SubmissionsSplitView } from "./submissions-split-view"
 import { IconPicker } from "./icon-picker"
 import { FormUsers } from "./form-users"
-import { EmbedSection, type EmbedData } from "./embed-editor"
+import { EmbedSection, CollapsibleSection, type EmbedData } from "./embed-editor"
 import { type FormEmbedConfig } from "@/lib/discord"
 
 interface FormData {
@@ -41,13 +41,13 @@ interface FormData {
 
 interface SubmissionsData {
   submissions: SubmissionItem[]
-  stats: { total: number; pending: number; accepted: number; rejected: number; today: number; week: number }
+  stats: { total: number; pending: number; underReview: number; accepted: number; rejected: number; today: number; week: number }
 }
 
 interface SubmissionItem {
   id: string
   createdAt: string
-  status: "PENDING" | "ACCEPTED" | "REJECTED"
+  status: "PENDING" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED"
   user: {
     discordId: string | null
     username: string | null
@@ -95,6 +95,8 @@ export function FormEditor({ formId }: FormEditorProps) {
   const [joinOnAcceptEnabled, setJoinOnAcceptEnabled] = useState(false)
   const [acceptServers, setAcceptServers] = useState<AcceptServerItem[]>([])
   const [logChannelId, setLogChannelId] = useState("")
+  const [logReceivedChannelId, setLogReceivedChannelId] = useState("")
+  const [logReceivedMessage, setLogReceivedMessage] = useState("")
   const [logAcceptedMessage, setLogAcceptedMessage] = useState("")
   const [logRejectedMessage, setLogRejectedMessage] = useState("")
 
@@ -135,6 +137,8 @@ export function FormEditor({ formId }: FormEditorProps) {
           })),
         )
         setLogChannelId(cfg.logChannelId ?? "")
+        setLogReceivedChannelId(cfg.logReceivedChannelId ?? "")
+        setLogReceivedMessage(cfg.logReceivedMessage ?? "")
         setLogAcceptedMessage(cfg.logAcceptedMessage ?? "")
         setLogRejectedMessage(cfg.logRejectedMessage ?? "")
       })
@@ -257,6 +261,8 @@ export function FormEditor({ formId }: FormEditorProps) {
         joinOnAcceptEnabled,
         acceptServers: normalizedServers,
         logChannelId: logChannelId.trim() || undefined,
+        logReceivedChannelId: logReceivedChannelId.trim() || undefined,
+        logReceivedMessage: logReceivedMessage.trim() || undefined,
         logAcceptedMessage: logAcceptedMessage.trim() || undefined,
         logRejectedMessage: logRejectedMessage.trim() || undefined,
       }
@@ -490,11 +496,32 @@ export function FormEditor({ formId }: FormEditorProps) {
                 tEmbed={tEmbed}
               />
               <Separator />
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">{t("logChannelTitle")}</p>
-                  <p className="text-xs text-muted-foreground">{t("logChannelDesc")}</p>
+              <CollapsibleSection label={t("logReceivedChannelTitle")}>
+                <p className="text-xs text-muted-foreground">{t("logReceivedChannelDesc")}</p>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{t("logChannelId")}</Label>
+                  <Input
+                    value={logReceivedChannelId}
+                    onChange={(e) => setLogReceivedChannelId(e.target.value)}
+                    placeholder="123456789012345678"
+                  />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("logReceivedMessage")}
+                    <span className="ml-2 font-normal opacity-60">{"{{username}}, {{globalName}}, {{formTitle}}, {{date}}"}</span>
+                  </Label>
+                  <Textarea
+                    value={logReceivedMessage}
+                    onChange={(e) => setLogReceivedMessage(e.target.value)}
+                    placeholder="📋 **{{globalName}}** (`{{username}}`) ha enviado una solicitud en **{{formTitle}}**"
+                    rows={2}
+                  />
+                </div>
+              </CollapsibleSection>
+              <Separator />
+              <CollapsibleSection label={t("logChannelTitle")}>
+                <p className="text-xs text-muted-foreground">{t("logChannelDesc")}</p>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">{t("logChannelId")}</Label>
                   <Input
@@ -527,13 +554,10 @@ export function FormEditor({ formId }: FormEditorProps) {
                     rows={2}
                   />
                 </div>
-              </div>
+              </CollapsibleSection>
               <Separator />
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">{t("joinOnAcceptTitle")}</p>
-                  <p className="text-xs text-muted-foreground">{t("joinOnAcceptDesc")}</p>
-                </div>
+              <CollapsibleSection label={t("joinOnAcceptTitle")}>
+                <p className="text-xs text-muted-foreground">{t("joinOnAcceptDesc")}</p>
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -542,11 +566,9 @@ export function FormEditor({ formId }: FormEditorProps) {
                   />
                   {t("joinOnAcceptEnabled")}
                 </label>
-
                 {acceptServers.length === 0 && (
                   <p className="text-xs text-muted-foreground">{t("noServers")}</p>
                 )}
-
                 <div className="space-y-3">
                   {acceptServers.map((server) => (
                     <div key={server.id} className="space-y-3 rounded-lg border p-3">
@@ -577,12 +599,11 @@ export function FormEditor({ formId }: FormEditorProps) {
                     </div>
                   ))}
                 </div>
-
                 <Button type="button" variant="outline" onClick={addServer}>
                   <Plus className="mr-2 h-4 w-4" />
                   {t("addServer")}
                 </Button>
-              </div>
+              </CollapsibleSection>
             </CardContent>
           </Card>
           <Button onClick={saveDiscord} disabled={saving}>

@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const startOfWeek = new Date(startOfToday)
   startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay())
 
-  const [submissions, total, pending, accepted, rejected, today, week] = await Promise.all([
+  const [submissions, total, pending, underReview, accepted, rejected, today, week] = await Promise.all([
     prisma.submission.findMany({
       where: { formId },
       include: {
@@ -29,13 +29,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }),
     prisma.submission.count({ where: { formId } }),
     prisma.submission.count({ where: { formId, status: "PENDING" } }),
+    prisma.submission.count({ where: { formId, status: "UNDER_REVIEW" } }),
     prisma.submission.count({ where: { formId, status: "ACCEPTED" } }),
     prisma.submission.count({ where: { formId, status: "REJECTED" } }),
     prisma.submission.count({ where: { formId, createdAt: { gte: startOfToday } } }),
     prisma.submission.count({ where: { formId, createdAt: { gte: startOfWeek } } }),
   ])
 
-  return Response.json({ submissions, stats: { total, pending, accepted, rejected, today, week } })
+  return Response.json({ submissions, stats: { total, pending, underReview, accepted, rejected, today, week } })
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

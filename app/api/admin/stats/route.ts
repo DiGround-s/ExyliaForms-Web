@@ -16,6 +16,7 @@ export async function GET() {
     draftForms,
     totalSubmissions,
     pendingSubmissions,
+    underReviewSubmissions,
     acceptedSubmissions,
     rejectedSubmissions,
     totalUsers,
@@ -27,6 +28,7 @@ export async function GET() {
     prisma.form.count({ where: { status: "DRAFT" } }),
     prisma.submission.count(),
     prisma.submission.count({ where: { status: "PENDING" } }),
+    prisma.submission.count({ where: { status: "UNDER_REVIEW" } }),
     prisma.submission.count({ where: { status: "ACCEPTED" } }),
     prisma.submission.count({ where: { status: "REJECTED" } }),
     prisma.user.count(),
@@ -58,6 +60,7 @@ export async function GET() {
     submissions: {
       total: totalSubmissions,
       pending: pendingSubmissions,
+      underReview: underReviewSubmissions,
       accepted: acceptedSubmissions,
       rejected: rejectedSubmissions,
     },

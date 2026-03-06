@@ -110,6 +110,7 @@
     "submissions": {
       "filterAll": "全部",
       "filterPending": "待处理",
+      "filterUnderReview": "审核中",
       "filterAccepted": "已接受",
       "filterRejected": "已拒绝",
       "noSubmissions": "暂无回复。",
@@ -117,6 +118,7 @@
       "selectOne": "选择一条回复",
       "statsTotal": "总计",
       "statsPending": "待处理",
+      "statsUnderReview": "审核中",
       "statsAccepted": "已接受",
       "statsRejected": "已拒绝",
       "statsToday": "今日",
@@ -124,6 +126,7 @@
       "responses": "回复",
       "accept": "接受",
       "reject": "拒绝",
+      "underReviewAction": "审核中",
       "deleteAll": "删除全部",
       "deleteAllTitle": "删除所有回复",
       "deleteAllDesc": "此操作将删除该表单的所有回复，且无法撤销。",
@@ -137,6 +140,7 @@
       "pendingAction": "待处理",
       "noAnswers": "暂无记录的回答。",
       "statusPending": "待处理",
+      "statusUnderReview": "审核中",
       "statusAccepted": "已接受",
       "statusRejected": "已拒绝",
       "refresh": "刷新"
@@ -190,8 +194,11 @@
       "activate": "激活",
       "deactivate": "停用",
       "logChannelTitle": "日志频道",
-      "logChannelDesc": "当提交被接受或拒绝时，向 Discord 频道发送消息。",
+      "logReceivedChannelTitle": "日志频道 — 提交已接收",
+      "logReceivedChannelDesc": "当用户提交表单时向此频道发送消息。",
+      "logChannelDesc": "当提交被接受或拒绝时，向此频道发送消息。",
       "logChannelId": "频道 ID",
+      "logReceivedMessage": "接收消息",
       "logAcceptedMessage": "接受消息",
       "logRejectedMessage": "拒绝消息"
     },
@@ -324,7 +331,9 @@
       "embedColor": "颜色",
       "vars": "可用变量",
       "previewTitle": "预览",
-      "noFooter": "无页脚"
+      "noFooter": "无页脚",
+      "logFormCreatedChannel": "日志频道 — 表单创建",
+      "logFormCreatedChannelDesc": "每次创建新表单时将记录到的 Discord 频道 ID。留空则禁用。"
     }
   },
   "fieldTypes": {

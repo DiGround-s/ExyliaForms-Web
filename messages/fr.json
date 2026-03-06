@@ -110,6 +110,7 @@
     "submissions": {
       "filterAll": "Tous",
       "filterPending": "En attente",
+      "filterUnderReview": "En révision",
       "filterAccepted": "Acceptés",
       "filterRejected": "Rejetés",
       "noSubmissions": "Aucune réponse pour l'instant.",
@@ -117,6 +118,7 @@
       "selectOne": "Sélectionnez une réponse",
       "statsTotal": "Total",
       "statsPending": "En attente",
+      "statsUnderReview": "En révision",
       "statsAccepted": "Acceptés",
       "statsRejected": "Rejetés",
       "statsToday": "Aujourd'hui",
@@ -124,6 +126,7 @@
       "responses": "Réponses",
       "accept": "Accepter",
       "reject": "Rejeter",
+      "underReviewAction": "En révision",
       "deleteAll": "Tout supprimer",
       "deleteAllTitle": "Supprimer toutes les réponses",
       "deleteAllDesc": "Cette action supprimera toutes les réponses de ce formulaire et ne peut pas être annulée.",
@@ -137,6 +140,7 @@
       "pendingAction": "En attente",
       "noAnswers": "Aucune réponse enregistrée.",
       "statusPending": "En attente",
+      "statusUnderReview": "En révision",
       "statusAccepted": "Accepté",
       "statusRejected": "Rejeté",
       "refresh": "Actualiser"
@@ -190,8 +194,11 @@
       "activate": "Activer",
       "deactivate": "Désactiver",
       "logChannelTitle": "Canal de log",
-      "logChannelDesc": "Envoie un message au canal Discord lorsqu'une réponse est acceptée ou rejetée.",
+      "logReceivedChannelTitle": "Canal de log — Soumission reçue",
+      "logReceivedChannelDesc": "Envoie un message à ce canal lorsqu'un utilisateur soumet un formulaire.",
+      "logChannelDesc": "Envoie un message à ce canal lorsqu'une réponse est acceptée ou rejetée.",
       "logChannelId": "ID du canal",
+      "logReceivedMessage": "Message de réception",
       "logAcceptedMessage": "Message d'acceptation",
       "logRejectedMessage": "Message de rejet"
     },
@@ -324,7 +331,9 @@
       "embedColor": "Couleur",
       "vars": "Variables disponibles",
       "previewTitle": "Aperçu",
-      "noFooter": "Pas de pied de page"
+      "noFooter": "Pas de pied de page",
+      "logFormCreatedChannel": "Canal de log — Formulaire créé",
+      "logFormCreatedChannelDesc": "ID du canal Discord où chaque nouveau formulaire créé sera enregistré. Laisser vide pour désactiver."
     }
   },
   "fieldTypes": {

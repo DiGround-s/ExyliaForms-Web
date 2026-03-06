@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { hashIp } from "@/lib/hash"
 import { checkRateLimit } from "@/lib/rate-limit"
-import { notifySubmissionReceived, type FormEmbedConfig } from "@/lib/discord"
+import { notifySubmissionReceived, logSubmissionReceivedToChannel, type FormEmbedConfig } from "@/lib/discord"
 import { z } from "zod"
 
 const submitSchema = z.object({
@@ -12,12 +12,6 @@ const submitSchema = z.object({
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user?.id) return Response.json({ error: "Unauthorized" }, { status: 401 })
-
-  const userExists = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true },
-  })
-  if (!userExists) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
 
@@ -35,18 +29,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "Too many requests" }, { status: 429 })
   }
 
-  const form = await prisma.form.findUnique({
-    where: { id },
-    include: { fields: { orderBy: { order: "asc" } } },
-  })
+  const [form, unlock, submitter] = await Promise.all([
+    prisma.form.findUnique({
+      where: { id },
+      include: { fields: { orderBy: { order: "asc" } } },
+    }),
+    prisma.formUserUnlock.findUnique({
+      where: { formId_userId: { formId: id, userId: session.user.id } },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { username: true, globalName: true },
+    }),
+  ])
 
   if (!form || form.status !== "PUBLISHED" || !form.isActive) {
     return Response.json({ error: "Form not available" }, { status: 404 })
   }
-
-  const unlock = await prisma.formUserUnlock.findUnique({
-    where: { formId_userId: { formId: id, userId: session.user.id } },
-  })
 
   if (!unlock) {
     if (form.maxSubmissionsPerUser) {
@@ -113,11 +112,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await prisma.formUserUnlock.delete({ where: { formId_userId: { formId: id, userId: session.user.id } } })
   }
 
+  const embedConfig = form.dmEmbedConfig as FormEmbedConfig | null
+
   notifySubmissionReceived({
     discordUserId: session.user.discordId,
     formTitle: form.title,
     submissionId: submission.id,
-    embedConfig: form.dmEmbedConfig as FormEmbedConfig | null,
+    embedConfig,
+  })
+
+  logSubmissionReceivedToChannel({
+    formTitle: form.title,
+    submissionId: submission.id,
+    username: submitter?.username ?? null,
+    globalName: submitter?.globalName ?? null,
+    embedConfig,
   })
 
   return Response.json({ id: submission.id }, { status: 201 })

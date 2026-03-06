@@ -306,9 +306,12 @@ function FieldCard({
             placeholder={t("helpPlaceholder")}
           />
 
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => onUpdate({ required: !field.required })}
-            className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-medium transition-colors ${
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onUpdate({ required: !field.required })}
+            className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-xs font-medium transition-colors select-none ${
               field.required
                 ? "border-primary/40 bg-primary/10 text-primary"
                 : "border-border/70 text-muted-foreground hover:text-foreground"
@@ -317,7 +320,7 @@ function FieldCard({
           >
             <Checkbox checked={field.required} className="pointer-events-none" />
             {t("required")}
-          </button>
+          </div>
 
           <button
             onClick={onRemove}
@@ -338,8 +341,8 @@ function FieldCard({
                     className="h-8"
                     type="number"
                     min={0}
-                    value={field.configJson.minLength ?? ""}
-                    onChange={(e) => updateConfig({ minLength: e.target.value ? Number(e.target.value) : undefined })}
+                    value={field.configJson.minLength ?? TEXT_LENGTH_DEFAULTS[field.type]?.minLength ?? ""}
+                    onChange={(e) => updateConfig({ minLength: e.target.value !== "" ? Number(e.target.value) : undefined })}
                   />
                 </div>
                 <div className="space-y-1">
@@ -348,8 +351,8 @@ function FieldCard({
                     className="h-8"
                     type="number"
                     min={1}
-                    value={field.configJson.maxLength ?? ""}
-                    onChange={(e) => updateConfig({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
+                    value={field.configJson.maxLength ?? TEXT_LENGTH_DEFAULTS[field.type]?.maxLength ?? ""}
+                    onChange={(e) => updateConfig({ maxLength: e.target.value !== "" ? Number(e.target.value) : undefined })}
                   />
                 </div>
               </div>

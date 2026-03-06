@@ -7,10 +7,13 @@ export interface FormEmbedConfig {
   joinOnAcceptEnabled?: boolean
   acceptServers?: Array<{ guildId?: string; roleIds?: string[] }>
   logChannelId?: string
+  logReceivedChannelId?: string
+  logReceivedMessage?: string
   logAcceptedMessage?: string
   logRejectedMessage?: string
 }
 
+const DEFAULT_LOG_RECEIVED = "📋 **{{globalName}}** (`{{username}}`) ha enviado una solicitud en **{{formTitle}}**"
 const DEFAULT_LOG_ACCEPTED = "✅ **{{globalName}}** (`{{username}}`) ha sido **aceptado** en **{{formTitle}}**"
 const DEFAULT_LOG_REJECTED = "❌ **{{globalName}}** (`{{username}}`) ha sido **rechazado** en **{{formTitle}}**"
 
@@ -124,98 +127,81 @@ export async function validateDiscordJoinConfig(embedConfig?: FormEmbedConfig | 
     return [{ guildId: "*", code: "INVALID_BOT_TOKEN", message: "Discord bot token is invalid or unauthorized." }]
   }
 
-  const issues: DiscordConfigIssue[] = []
+  const serverIssues = await Promise.all(
+    servers.map(async (server): Promise<DiscordConfigIssue[]> => {
+      const guildRes = await fetch(`${DISCORD_API}/guilds/${server.guildId}`, {
+        headers: { Authorization: `Bot ${BOT_TOKEN}` },
+      })
+      if (!guildRes.ok) {
+        return [{
+          guildId: server.guildId,
+          code: "UNKNOWN_GUILD",
+          message: `Server ${server.guildId}: the bot cannot access this guild (Unknown Guild or not invited).`,
+        }]
+      }
 
-  for (const server of servers) {
-    const guildRes = await fetch(`${DISCORD_API}/guilds/${server.guildId}`, {
-      headers: { Authorization: `Bot ${BOT_TOKEN}` },
+      const [rolesRes, botMemberRes] = await Promise.all([
+        fetch(`${DISCORD_API}/guilds/${server.guildId}/roles`, {
+          headers: { Authorization: `Bot ${BOT_TOKEN}` },
+        }),
+        fetch(`${DISCORD_API}/guilds/${server.guildId}/members/${botUserId}`, {
+          headers: { Authorization: `Bot ${BOT_TOKEN}` },
+        }),
+      ])
+
+      if (!rolesRes.ok) {
+        return [{
+          guildId: server.guildId,
+          code: "ROLES_ACCESS_FAILED",
+          message: `Server ${server.guildId}: unable to read guild roles with current bot permissions.`,
+        }]
+      }
+
+      if (!botMemberRes.ok) {
+        return [{
+          guildId: server.guildId,
+          code: "BOT_NOT_IN_GUILD",
+          message: `Server ${server.guildId}: bot member is not available in this guild.`,
+        }]
+      }
+
+      const roles = (await rolesRes.json()) as DiscordRole[]
+      const botMember = (await botMemberRes.json()) as DiscordGuildMember
+      const botRoles = roles.filter((role) => botMember.roles.includes(role.id))
+      const botTopPosition = botRoles.reduce((max, role) => Math.max(max, role.position), 0)
+      const hasManageRoles = botRoles.some((role) => (BigInt(role.permissions) & MANAGE_ROLES_PERMISSION) === MANAGE_ROLES_PERMISSION)
+
+      const localIssues: DiscordConfigIssue[] = []
+
+      if (!hasManageRoles && server.roleIds.length > 0) {
+        localIssues.push({
+          guildId: server.guildId,
+          code: "MISSING_MANAGE_ROLES",
+          message: `Server ${server.guildId}: bot is missing Manage Roles permission.`,
+        })
+      }
+
+      for (const roleId of server.roleIds) {
+        const role = roles.find((r) => r.id === roleId)
+        if (!role) {
+          localIssues.push({ guildId: server.guildId, roleId, code: "ROLE_NOT_FOUND", message: `Server ${server.guildId}: role ${roleId} was not found.` })
+          continue
+        }
+        if (role.managed) {
+          localIssues.push({ guildId: server.guildId, roleId, code: "ROLE_MANAGED", message: `Server ${server.guildId}: role ${roleId} is managed by an integration and cannot be assigned manually.` })
+          continue
+        }
+        if (!hasManageRoles) continue
+        if (role.position >= botTopPosition) {
+          localIssues.push({ guildId: server.guildId, roleId, code: "ROLE_HIERARCHY", message: `Server ${server.guildId}: role ${roleId} is above or equal to the bot's highest role.` })
+        }
+      }
+
+      return localIssues
     })
-    if (!guildRes.ok) {
-      issues.push({
-        guildId: server.guildId,
-        code: "UNKNOWN_GUILD",
-        message: `Server ${server.guildId}: the bot cannot access this guild (Unknown Guild or not invited).`,
-      })
-      continue
-    }
+  )
 
-    const [rolesRes, botMemberRes] = await Promise.all([
-      fetch(`${DISCORD_API}/guilds/${server.guildId}/roles`, {
-        headers: { Authorization: `Bot ${BOT_TOKEN}` },
-      }),
-      fetch(`${DISCORD_API}/guilds/${server.guildId}/members/${botUserId}`, {
-        headers: { Authorization: `Bot ${BOT_TOKEN}` },
-      }),
-    ])
-
-    if (!rolesRes.ok) {
-      issues.push({
-        guildId: server.guildId,
-        code: "ROLES_ACCESS_FAILED",
-        message: `Server ${server.guildId}: unable to read guild roles with current bot permissions.`,
-      })
-      continue
-    }
-
-    if (!botMemberRes.ok) {
-      issues.push({
-        guildId: server.guildId,
-        code: "BOT_NOT_IN_GUILD",
-        message: `Server ${server.guildId}: bot member is not available in this guild.`,
-      })
-      continue
-    }
-
-    const roles = (await rolesRes.json()) as DiscordRole[]
-    const botMember = (await botMemberRes.json()) as DiscordGuildMember
-    const botRoles = roles.filter((role) => botMember.roles.includes(role.id))
-    const botTopPosition = botRoles.reduce((max, role) => Math.max(max, role.position), 0)
-    const hasManageRoles = botRoles.some((role) => (BigInt(role.permissions) & MANAGE_ROLES_PERMISSION) === MANAGE_ROLES_PERMISSION)
-
-    if (!hasManageRoles && server.roleIds.length > 0) {
-      issues.push({
-        guildId: server.guildId,
-        code: "MISSING_MANAGE_ROLES",
-        message: `Server ${server.guildId}: bot is missing Manage Roles permission.`,
-      })
-    }
-
-    for (const roleId of server.roleIds) {
-      const role = roles.find((r) => r.id === roleId)
-      if (!role) {
-        issues.push({
-          guildId: server.guildId,
-          roleId,
-          code: "ROLE_NOT_FOUND",
-          message: `Server ${server.guildId}: role ${roleId} was not found.`,
-        })
-        continue
-      }
-
-      if (role.managed) {
-        issues.push({
-          guildId: server.guildId,
-          roleId,
-          code: "ROLE_MANAGED",
-          message: `Server ${server.guildId}: role ${roleId} is managed by an integration and cannot be assigned manually.`,
-        })
-        continue
-      }
-
-      if (!hasManageRoles) continue
-
-      if (role.position >= botTopPosition) {
-        issues.push({
-          guildId: server.guildId,
-          roleId,
-          code: "ROLE_HIERARCHY",
-          message: `Server ${server.guildId}: role ${roleId} is above or equal to the bot's highest role.`,
-        })
-      }
-    }
-  }
-
-  return issues
+  return serverIssues.flat()
 }
 
 function dispatch(discordUserId: string | null | undefined, buildPayload: () => Promise<object>): void {
@@ -298,6 +284,50 @@ export function notifySubmissionReceived({
       }],
     }
   })
+}
+
+export function logSubmissionReceivedToChannel({
+  formTitle,
+  submissionId,
+  username,
+  globalName,
+  embedConfig,
+}: {
+  formTitle: string
+  submissionId: string
+  username: string | null
+  globalName: string | null
+  embedConfig?: FormEmbedConfig | null
+}): void {
+  const channelId = embedConfig?.logReceivedChannelId?.trim()
+  if (!BOT_TOKEN || !channelId) return
+
+  const vars = {
+    formTitle,
+    submissionId,
+    username: username ?? "unknown",
+    globalName: globalName ?? username ?? "unknown",
+    date: new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }),
+  }
+
+  const content = fill(embedConfig?.logReceivedMessage?.trim() || DEFAULT_LOG_RECEIVED, vars)
+
+  ;(async () => {
+    try {
+      await sendMessage(channelId, {
+        content,
+        embeds: [{
+          color: hexToInt("#5865F2"),
+          fields: [
+            { name: "Formulario", value: formTitle, inline: true },
+            { name: "Usuario", value: globalName ?? username ?? "—", inline: true },
+            { name: "🔗 Ver respuesta", value: `[Abrir panel](${appUrl()}/admin/forms)`, inline: false },
+          ],
+          timestamp: new Date().toISOString(),
+        }],
+      })
+    } catch {}
+  })()
 }
 
 export function logSubmissionStatusToChannel({

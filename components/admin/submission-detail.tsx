@@ -6,11 +6,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, XCircle, Clock, Trash2, Loader2 } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Trash2, Loader2, BookMarked } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { LOCALE_META } from "@/i18n/locales"
 
-type SubmissionStatus = "PENDING" | "ACCEPTED" | "REJECTED"
+type SubmissionStatus = "PENDING" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED"
 type ConfirmStatus = "ACCEPTED" | "REJECTED"
 
 interface SubmissionAnswer {
@@ -38,6 +38,7 @@ interface SubmissionDetailProps {
 
 const STATUS_VARIANT: Record<SubmissionStatus, "default" | "secondary" | "destructive" | "outline"> = {
   PENDING: "secondary",
+  UNDER_REVIEW: "outline",
   ACCEPTED: "default",
   REJECTED: "destructive",
 }
@@ -90,6 +91,7 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
 
   const statusLabel: Record<SubmissionStatus, string> = {
     PENDING: t("statusPending"),
+    UNDER_REVIEW: t("statusUnderReview"),
     ACCEPTED: t("statusAccepted"),
     REJECTED: t("statusRejected"),
   }
@@ -139,6 +141,16 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
                 >
                   <XCircle className="mr-1.5 h-3.5 w-3.5" />
                   {t("reject")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={submission.status === "UNDER_REVIEW" ? "secondary" : "outline"}
+                  onClick={() => onStatusChange(submission.id, "UNDER_REVIEW")}
+                  disabled={submission.status === "UNDER_REVIEW"}
+                  className="flex-1 sm:flex-none"
+                >
+                  <BookMarked className="mr-1.5 h-3.5 w-3.5" />
+                  {t("underReviewAction")}
                 </Button>
                 {submission.status !== "PENDING" && (
                   <Button
