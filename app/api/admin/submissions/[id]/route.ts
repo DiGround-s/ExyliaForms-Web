@@ -125,6 +125,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       submissionId: id,
       username: submission.user.username,
       globalName: submission.user.globalName,
+      discordId: submission.user.discordId,
       embedConfig: submission.form.dmEmbedConfig as FormEmbedConfig | null,
     })
   }

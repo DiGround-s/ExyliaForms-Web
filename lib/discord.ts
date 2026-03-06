@@ -13,9 +13,9 @@ export interface FormEmbedConfig {
   logRejectedMessage?: string
 }
 
-const DEFAULT_LOG_RECEIVED = "📋 **{{globalName}}** (`{{username}}`) ha enviado una solicitud en **{{formTitle}}**"
-const DEFAULT_LOG_ACCEPTED = "✅ **{{globalName}}** (`{{username}}`) ha sido **aceptado** en **{{formTitle}}**"
-const DEFAULT_LOG_REJECTED = "❌ **{{globalName}}** (`{{username}}`) ha sido **rechazado** en **{{formTitle}}**"
+const DEFAULT_LOG_RECEIVED = "📋 {{mention}} ha enviado una solicitud en **{{formTitle}}**"
+const DEFAULT_LOG_ACCEPTED = "✅ {{mention}} ha sido **aceptado** en **{{formTitle}}**"
+const DEFAULT_LOG_REJECTED = "❌ {{mention}} ha sido **rechazado** en **{{formTitle}}**"
 
 export interface DiscordConfigIssue {
   guildId: string
@@ -291,22 +291,26 @@ export function logSubmissionReceivedToChannel({
   submissionId,
   username,
   globalName,
+  discordId,
   embedConfig,
 }: {
   formTitle: string
   submissionId: string
   username: string | null
   globalName: string | null
+  discordId: string | null | undefined
   embedConfig?: FormEmbedConfig | null
 }): void {
   const channelId = embedConfig?.logReceivedChannelId?.trim()
   if (!BOT_TOKEN || !channelId) return
 
+  const mention = discordId ? `<@${discordId}>` : (globalName ?? username ?? "unknown")
   const vars = {
     formTitle,
     submissionId,
     username: username ?? "unknown",
     globalName: globalName ?? username ?? "unknown",
+    mention,
     date: new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }),
   }
 
@@ -316,15 +320,7 @@ export function logSubmissionReceivedToChannel({
     try {
       await sendMessage(channelId, {
         content,
-        embeds: [{
-          color: hexToInt("#5865F2"),
-          fields: [
-            { name: "Formulario", value: formTitle, inline: true },
-            { name: "Usuario", value: globalName ?? username ?? "—", inline: true },
-            { name: "🔗 Ver respuesta", value: `[Abrir panel](${appUrl()}/admin/forms)`, inline: false },
-          ],
-          timestamp: new Date().toISOString(),
-        }],
+        allowed_mentions: { parse: ["users"] },
       })
     } catch {}
   })()
@@ -336,6 +332,7 @@ export function logSubmissionStatusToChannel({
   submissionId,
   username,
   globalName,
+  discordId,
   embedConfig,
 }: {
   status: "ACCEPTED" | "REJECTED"
@@ -343,16 +340,19 @@ export function logSubmissionStatusToChannel({
   submissionId: string
   username: string | null
   globalName: string | null
+  discordId: string | null | undefined
   embedConfig?: FormEmbedConfig | null
 }): void {
   const channelId = embedConfig?.logChannelId?.trim()
   if (!BOT_TOKEN || !channelId) return
 
+  const mention = discordId ? `<@${discordId}>` : (globalName ?? username ?? "unknown")
   const vars = {
     formTitle,
     submissionId,
     username: username ?? "unknown",
     globalName: globalName ?? username ?? "unknown",
+    mention,
     date: new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }),
   }
 
@@ -362,21 +362,12 @@ export function logSubmissionStatusToChannel({
       : (embedConfig?.logRejectedMessage?.trim() || DEFAULT_LOG_REJECTED)
 
   const content = fill(template, vars)
-  const link = `${appUrl()}/admin/forms/${submissionId.split("-")[0]}/submissions`
 
   ;(async () => {
     try {
       await sendMessage(channelId, {
         content,
-        embeds: [{
-          color: status === "ACCEPTED" ? hexToInt("#57F287") : hexToInt("#ED4245"),
-          fields: [
-            { name: "Formulario", value: formTitle, inline: true },
-            { name: "Usuario", value: globalName ?? username ?? "—", inline: true },
-            { name: "🔗 Ver respuesta", value: `[Abrir panel](${appUrl()}/admin/forms)`, inline: false },
-          ],
-          timestamp: new Date().toISOString(),
-        }],
+        allowed_mentions: { parse: ["users"] },
       })
     } catch {}
   })()

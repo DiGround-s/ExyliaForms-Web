@@ -126,6 +126,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     submissionId: submission.id,
     username: submitter?.username ?? null,
     globalName: submitter?.globalName ?? null,
+    discordId: session.user.discordId,
     embedConfig,
   })
 
