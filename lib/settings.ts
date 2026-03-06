@@ -1,5 +1,7 @@
-import { cache } from "react"
+import { unstable_cache } from "next/cache"
 import { prisma } from "./prisma"
+
+export const SETTINGS_CACHE_TAG = "settings"
 
 const DEFAULTS: Record<string, string> = {
   app_name: "Exylia Forms",
@@ -29,19 +31,32 @@ const DEFAULTS: Record<string, string> = {
   dm_rejected_color: "#ED4245",
 }
 
-export const getSetting = cache(async function getSetting(key: string): Promise<string> {
-  const row = await prisma.appSetting.findUnique({ where: { key } })
-  return row?.value ?? DEFAULTS[key] ?? ""
-})
+const getAllSettings = unstable_cache(
+  async (): Promise<Record<string, string>> => {
+    const rows = await prisma.appSetting.findMany()
+    const result: Record<string, string> = { ...DEFAULTS }
+    for (const row of rows) {
+      result[row.key] = row.value
+    }
+    return result
+  },
+  [SETTINGS_CACHE_TAG],
+  { revalidate: false, tags: [SETTINGS_CACHE_TAG] }
+)
 
-export const getSettings = cache(async function getSettings(keys: string[]): Promise<Record<string, string>> {
-  const rows = await prisma.appSetting.findMany({ where: { key: { in: keys } } })
-  const map: Record<string, string> = {}
+export async function getSetting(key: string): Promise<string> {
+  const all = await getAllSettings()
+  return all[key] ?? ""
+}
+
+export async function getSettings(keys: string[]): Promise<Record<string, string>> {
+  const all = await getAllSettings()
+  const result: Record<string, string> = {}
   for (const key of keys) {
-    map[key] = rows.find((r) => r.key === key)?.value ?? DEFAULTS[key] ?? ""
+    result[key] = all[key] ?? ""
   }
-  return map
-})
+  return result
+}
 
 export async function setSetting(key: string, value: string): Promise<void> {
   await prisma.appSetting.upsert({

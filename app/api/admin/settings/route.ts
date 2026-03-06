@@ -1,6 +1,7 @@
+import { revalidateTag } from "next/cache"
 import { auth } from "@/lib/auth"
 import { hasAdminAccess } from "@/lib/auth-utils"
-import { setSettings } from "@/lib/settings"
+import { setSettings, SETTINGS_CACHE_TAG } from "@/lib/settings"
 import { z } from "zod"
 
 const schema = z.object({
@@ -45,6 +46,7 @@ export async function PUT(req: Request) {
     Object.entries(parsed.data).filter(([, v]) => v !== undefined) as [string, string][]
   )
   await setSettings(updates)
+  revalidateTag(SETTINGS_CACHE_TAG)
 
   return Response.json({ ok: true })
 }
