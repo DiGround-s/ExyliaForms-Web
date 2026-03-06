@@ -27,5 +27,6 @@ declare module "next-auth/jwt" {
     id?: string
     role?: string
     discordId?: string
+    roleCheckedAt?: number
   }
 }

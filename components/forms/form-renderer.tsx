@@ -38,28 +38,56 @@ interface FormRendererProps {
 
 function buildSchema(
   fields: FormFieldDef[],
+  requiredMsg: string,
   emailMsg: string,
   urlMsg: string,
   minLengthMsg: (min: number) => string,
   maxLengthMsg: (max: number) => string,
+  minValueMsg: (min: number) => string,
+  maxValueMsg: (max: number) => string,
 ) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of fields) {
     let schema: z.ZodTypeAny = z.unknown()
+
     if (field.type === "SHORT_TEXT" || field.type === "LONG_TEXT") {
       let s = z.string()
-      const minLen = field.configJson.minLength as number | undefined
-      const maxLen = field.configJson.maxLength as number | undefined
-      if (minLen) s = s.min(minLen, minLengthMsg(minLen))
-      if (maxLen) s = s.max(maxLen, maxLengthMsg(maxLen))
+      const defaultMax = field.type === "SHORT_TEXT" ? 255 : 1000
+      const minLen = (field.configJson.minLength as number | undefined) ?? 0
+      const maxLen = (field.configJson.maxLength as number | undefined) ?? defaultMax
+      if (field.required && minLen < 1) s = s.min(1, requiredMsg)
+      else if (minLen > 0) s = s.min(minLen, minLengthMsg(minLen))
+      s = s.max(maxLen, maxLengthMsg(maxLen))
       schema = s
-    } else if (field.type === "EMAIL") schema = z.string().email(emailMsg)
-    else if (field.type === "URL") schema = z.string().url(urlMsg)
-    else if (field.type === "NUMBER") schema = z.number()
-    else if (field.type === "DATE") schema = z.string()
-    else if (field.type === "CHECKBOX") schema = z.boolean()
-    else if (field.type === "SELECT") schema = z.string()
-    else if (field.type === "MULTI_SELECT") schema = z.array(z.string())
+    } else if (field.type === "EMAIL") {
+      schema = field.required
+        ? z.string().min(1, requiredMsg).email(emailMsg)
+        : z.string().email(emailMsg)
+    } else if (field.type === "URL") {
+      schema = field.required
+        ? z.string().min(1, requiredMsg).url(urlMsg)
+        : z.string().url(urlMsg)
+    } else if (field.type === "NUMBER") {
+      let s = z.number({ invalid_type_error: requiredMsg })
+      const minVal = field.configJson.min as number | undefined
+      const maxVal = field.configJson.max as number | undefined
+      if (minVal !== undefined) s = s.min(minVal, minValueMsg(minVal))
+      if (maxVal !== undefined) s = s.max(maxVal, maxValueMsg(maxVal))
+      schema = s
+    } else if (field.type === "DATE") {
+      schema = field.required ? z.string().min(1, requiredMsg) : z.string()
+    } else if (field.type === "CHECKBOX") {
+      schema = field.required
+        ? z.literal(true, { errorMap: () => ({ message: requiredMsg }) })
+        : z.boolean()
+    } else if (field.type === "SELECT") {
+      schema = field.required ? z.string().min(1, requiredMsg) : z.string()
+    } else if (field.type === "MULTI_SELECT") {
+      schema = field.required
+        ? z.array(z.string()).min(1, requiredMsg)
+        : z.array(z.string())
+    }
+
     if (!field.required) {
       if (field.type === "EMAIL" || field.type === "URL") {
         schema = z.union([z.literal(""), schema as z.ZodString])
@@ -110,10 +138,13 @@ export function FormRenderer({ formId, sections = [], fields }: FormRendererProp
 
   const schema = buildSchema(
     fields,
+    t("fieldRequired"),
     t("emailInvalid"),
     t("urlInvalid"),
     (min) => t("minLengthMsg", { min }),
     (max) => t("maxLengthMsg", { max }),
+    (min) => t("minValueMsg", { min }),
+    (max) => t("maxValueMsg", { max }),
   )
   const form = useForm<Record<string, unknown>>({
     resolver: zodResolver(schema),

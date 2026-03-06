@@ -71,7 +71,10 @@
     "limitReached": "Limit reached",
     "limitReachedTitle": "Unavailable",
     "limitReachedDesc": "You have already reached the response limit for this form.",
-    "noFields": "This form has no fields configured."
+    "noFields": "This form has no fields configured.",
+    "fieldRequired": "This field is required",
+    "minValueMsg": "Minimum value is {min}",
+    "maxValueMsg": "Maximum value is {max}"
   },
   "submissions": {
     "title": "My responses",
@@ -135,7 +138,8 @@
       "noAnswers": "No answers recorded.",
       "statusPending": "Pending",
       "statusAccepted": "Accepted",
-      "statusRejected": "Rejected"
+      "statusRejected": "Rejected",
+      "refresh": "Refresh"
     },
     "editor": {
       "saved": "Saved",
@@ -184,7 +188,12 @@
       "formActiveDesc": "Active — users can view and respond",
       "formInactiveDesc": "Inactive — users can see it but cannot access it",
       "activate": "Activate",
-      "deactivate": "Deactivate"
+      "deactivate": "Deactivate",
+      "logChannelTitle": "Log channel",
+      "logChannelDesc": "Send a message to a Discord channel when a submission is accepted or rejected.",
+      "logChannelId": "Channel ID",
+      "logAcceptedMessage": "Accepted message",
+      "logRejectedMessage": "Rejected message"
     },
     "fieldEditor": {
       "dragField": "Drag field",
@@ -213,7 +222,11 @@
       "dropHere": "Drop fields here",
       "addFieldNoSection": "Add field without section",
       "addSection": "Add section",
-      "addField": "Add field"
+      "addField": "Add field",
+      "minLength": "Min. chars",
+      "maxLength": "Max. chars",
+      "minValue": "Min value",
+      "maxValue": "Max value"
     }
   },
   "settings": {

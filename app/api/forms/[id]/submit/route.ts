@@ -11,7 +11,13 @@ const submitSchema = z.object({
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session?.user?.id) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const userExists = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  })
+  if (!userExists) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
 

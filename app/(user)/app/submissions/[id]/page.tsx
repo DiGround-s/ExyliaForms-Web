@@ -58,13 +58,13 @@ function renderValue(value: unknown, tCommon: (key: string) => string) {
 
   if (typeof value === "object") {
     return (
-      <pre className="overflow-x-auto rounded-lg border border-border/70 bg-background/70 p-3 text-xs text-muted-foreground">
+      <pre className="whitespace-pre-wrap break-words rounded-lg border border-border/70 bg-background/70 p-3 text-xs text-muted-foreground">
         {JSON.stringify(value, null, 2)}
       </pre>
     )
   }
 
-  return <p className="whitespace-pre-wrap text-sm leading-relaxed">{String(value)}</p>
+  return <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{String(value)}</p>
 }
 
 export default async function SubmissionDetailPage({ params }: Params) {
@@ -157,7 +157,7 @@ export default async function SubmissionDetailPage({ params }: Params) {
               </div>
             </CardHeader>
             <CardContent className="py-0 pb-4">
-              <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+              <div className="min-w-0 overflow-hidden rounded-lg border border-border/70 bg-background/60 p-3">
                 {renderValue(answer.valueJson, tCommon)}
               </div>
             </CardContent>

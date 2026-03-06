@@ -6,7 +6,13 @@ export interface FormEmbedConfig {
   rejected?: { title?: string; description?: string; cooldown?: string; footer?: string; color?: string }
   joinOnAcceptEnabled?: boolean
   acceptServers?: Array<{ guildId?: string; roleIds?: string[] }>
+  logChannelId?: string
+  logAcceptedMessage?: string
+  logRejectedMessage?: string
 }
+
+const DEFAULT_LOG_ACCEPTED = "✅ **{{globalName}}** (`{{username}}`) ha sido **aceptado** en **{{formTitle}}**"
+const DEFAULT_LOG_REJECTED = "❌ **{{globalName}}** (`{{username}}`) ha sido **rechazado** en **{{formTitle}}**"
 
 export interface DiscordConfigIssue {
   guildId: string
@@ -292,6 +298,58 @@ export function notifySubmissionReceived({
       }],
     }
   })
+}
+
+export function logSubmissionStatusToChannel({
+  status,
+  formTitle,
+  submissionId,
+  username,
+  globalName,
+  embedConfig,
+}: {
+  status: "ACCEPTED" | "REJECTED"
+  formTitle: string
+  submissionId: string
+  username: string | null
+  globalName: string | null
+  embedConfig?: FormEmbedConfig | null
+}): void {
+  const channelId = embedConfig?.logChannelId?.trim()
+  if (!BOT_TOKEN || !channelId) return
+
+  const vars = {
+    formTitle,
+    submissionId,
+    username: username ?? "unknown",
+    globalName: globalName ?? username ?? "unknown",
+    date: new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }),
+  }
+
+  const template =
+    status === "ACCEPTED"
+      ? (embedConfig?.logAcceptedMessage?.trim() || DEFAULT_LOG_ACCEPTED)
+      : (embedConfig?.logRejectedMessage?.trim() || DEFAULT_LOG_REJECTED)
+
+  const content = fill(template, vars)
+  const link = `${appUrl()}/admin/forms/${submissionId.split("-")[0]}/submissions`
+
+  ;(async () => {
+    try {
+      await sendMessage(channelId, {
+        content,
+        embeds: [{
+          color: status === "ACCEPTED" ? hexToInt("#57F287") : hexToInt("#ED4245"),
+          fields: [
+            { name: "Formulario", value: formTitle, inline: true },
+            { name: "Usuario", value: globalName ?? username ?? "—", inline: true },
+            { name: "🔗 Ver respuesta", value: `[Abrir panel](${appUrl()}/admin/forms)`, inline: false },
+          ],
+          timestamp: new Date().toISOString(),
+        }],
+      })
+    } catch {}
+  })()
 }
 
 export function notifySubmissionStatusChanged({

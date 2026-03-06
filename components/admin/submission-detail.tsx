@@ -71,13 +71,13 @@ function renderAnswerValue(value: unknown, yes: string, no: string, noAnswer: st
 
   if (typeof value === "object") {
     return (
-      <pre className="overflow-x-auto rounded-lg border border-border/70 bg-background/70 p-2.5 text-xs text-muted-foreground">
+      <pre className="whitespace-pre-wrap break-words rounded-lg border border-border/70 bg-background/70 p-2.5 text-xs text-muted-foreground">
         {JSON.stringify(value, null, 2)}
       </pre>
     )
   }
 
-  return <p className="text-sm whitespace-pre-wrap leading-relaxed">{String(value ?? "—")}</p>
+  return <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{String(value ?? "—")}</p>
 }
 
 export function SubmissionDetail({ submission, onStatusChange, onDelete, deleting }: SubmissionDetailProps) {
@@ -211,10 +211,10 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
                 </div>
               )}
 
-              <div className="rounded-xl border border-border/70 bg-card/80 p-3.5 shadow-sm">
+              <div className="min-w-0 rounded-xl border border-border/70 bg-card/80 p-3.5 shadow-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{tSub("question", { n: index + 1 })}</p>
-                <p className="mt-1 text-sm font-medium leading-snug">{answer.field.label}</p>
-                <div className="mt-2 rounded-lg border border-border/60 bg-background/60 p-2.5">
+                <p className="mt-1 text-sm font-medium leading-snug break-words">{answer.field.label}</p>
+                <div className="mt-2 min-w-0 overflow-hidden rounded-lg border border-border/60 bg-background/60 p-2.5">
                   {renderAnswerValue(answer.valueJson, tCommon("yes"), tCommon("no"), tCommon("noAnswer"))}
                 </div>
               </div>

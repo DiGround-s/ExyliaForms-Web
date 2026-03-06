@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { Loader2 } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -62,11 +62,14 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
 
   const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions)
   const [stats, setStats] = useState<Stats>(initialStats)
-  const [selectedId, setSelectedId] = useState<string | null>(initialSubmissions[0]?.id ?? null)
-  const [filter, setFilter] = useState<Filter>("ALL")
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialSubmissions.find((s) => s.status === "PENDING")?.id ?? initialSubmissions[0]?.id ?? null
+  )
+  const [filter, setFilter] = useState<Filter>("PENDING")
   const [deleting, setDeleting] = useState<string | null>(null)
   const [deletingAll, setDeletingAll] = useState(false)
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   const FILTERS: Array<{ key: Filter; label: string }> = [
     { key: "ALL", label: t("filterAll") },
@@ -126,6 +129,17 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
     if (selectedId === id) setSelectedId(nextList[0]?.id ?? null)
   }, [submissions, selectedId])
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    const res = await fetch(`/api/admin/forms/${formId}/submissions`)
+    setRefreshing(false)
+    if (!res.ok) return
+    const data = await res.json()
+    setSubmissions(data.submissions)
+    setStats(data.stats)
+    setSelectedId((prev) => data.submissions.find((s: Submission) => s.id === prev)?.id ?? data.submissions[0]?.id ?? null)
+  }, [formId])
+
   const handleDeleteAll = useCallback(async () => {
     setDeletingAll(true)
     const res = await fetch(`/api/admin/forms/${formId}/submissions`, { method: "DELETE" })
@@ -177,16 +191,28 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
             </Button>
           ))}
         </div>
-        {!readOnly && (
+        <div className="flex items-center gap-1.5">
           <Button
             size="sm"
-            variant="destructive"
+            variant="outline"
             className="h-7 text-xs"
-            onClick={() => setConfirmDeleteAll(true)}
+            onClick={handleRefresh}
+            disabled={refreshing}
           >
-            {t("deleteAll")}
+            <RefreshCw className={`mr-1.5 h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+            {t("refresh")}
           </Button>
-        )}
+          {!readOnly && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 text-xs"
+              onClick={() => setConfirmDeleteAll(true)}
+            >
+              {t("deleteAll")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {filtered.length === 0 ? (

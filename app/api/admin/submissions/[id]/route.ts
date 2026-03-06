@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth"
 import { hasAdminAccess } from "@/lib/auth-utils"
 import { prisma } from "@/lib/prisma"
-import { notifySubmissionStatusChanged, syncAcceptedDiscordMembership, type FormEmbedConfig } from "@/lib/discord"
+import { notifySubmissionStatusChanged, logSubmissionStatusToChannel, syncAcceptedDiscordMembership, type FormEmbedConfig } from "@/lib/discord"
 import { z } from "zod"
 import { SubmissionStatus } from "@prisma/client"
 
@@ -87,7 +87,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     select: {
       id: true,
       status: true,
-      user: { select: { id: true, discordId: true } },
+      user: { select: { id: true, discordId: true, username: true, globalName: true } },
       form: { select: { title: true, reapplyCooldownDays: true, dmEmbedConfig: true } },
     },
   })
@@ -116,6 +116,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       submissionId: id,
       status: newStatus,
       cooldownDays: newStatus === "REJECTED" ? (submission.form.reapplyCooldownDays ?? null) : null,
+      embedConfig: submission.form.dmEmbedConfig as FormEmbedConfig | null,
+    })
+
+    logSubmissionStatusToChannel({
+      status: newStatus,
+      formTitle: submission.form.title,
+      submissionId: id,
+      username: submission.user.username,
+      globalName: submission.user.globalName,
       embedConfig: submission.form.dmEmbedConfig as FormEmbedConfig | null,
     })
   }

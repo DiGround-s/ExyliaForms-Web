@@ -55,28 +55,52 @@ export function FieldRenderer({ field, control }: FieldRendererProps) {
           <FormControl>
             {(() => {
               if (field.type === "SHORT_TEXT" || field.type === "EMAIL" || field.type === "URL") {
+                const val = (formField.value as string) ?? ""
+                const maxLen = config.maxLength ?? (field.type === "SHORT_TEXT" ? 255 : undefined)
+                const minLen = config.minLength ?? 0
                 return (
-                  <Input
-                    {...formField}
-                    className="h-11 border-border/70 bg-background/75"
-                    type={
-                      field.type === "EMAIL" ? "email" : field.type === "URL" ? "url" : "text"
-                    }
-                    value={(formField.value as string) ?? ""}
-                    maxLength={config.maxLength}
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      {...formField}
+                      className="h-11 border-border/70 bg-background/75"
+                      type={field.type === "EMAIL" ? "email" : field.type === "URL" ? "url" : "text"}
+                      value={val}
+                      maxLength={maxLen}
+                    />
+                    {(maxLen || minLen > 0) && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{minLen > 0 && val.length < minLen ? `Mínimo ${minLen} caracteres` : ""}</span>
+                        {maxLen && (
+                          <span className={val.length >= maxLen ? "text-destructive font-medium" : ""}>
+                            {val.length} / {maxLen}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )
               }
 
               if (field.type === "LONG_TEXT") {
+                const val = (formField.value as string) ?? ""
+                const maxLen = config.maxLength ?? 1000
+                const minLen = config.minLength ?? 0
                 return (
-                  <Textarea
-                    className="min-h-28 border-border/70 bg-background/75"
-                    {...formField}
-                    value={(formField.value as string) ?? ""}
-                    rows={4}
-                    maxLength={config.maxLength}
-                  />
+                  <div className="space-y-1">
+                    <Textarea
+                      className="min-h-28 border-border/70 bg-background/75"
+                      {...formField}
+                      value={val}
+                      rows={4}
+                      maxLength={maxLen}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{minLen > 0 && val.length < minLen ? `Mínimo ${minLen} caracteres` : ""}</span>
+                      <span className={val.length >= maxLen ? "text-destructive font-medium" : ""}>
+                        {val.length} / {maxLen}
+                      </span>
+                    </div>
+                  </div>
                 )
               }
 

@@ -22,7 +22,12 @@ export default async function AdminUsersPage({
   const [session, users] = await Promise.all([
     auth(),
     prisma.user.findMany({
-      orderBy: { lastLoginAt: "desc" },
+      orderBy: [
+        {
+          role: "desc",
+        },
+        { lastLoginAt: "desc" },
+      ],
       where: search
         ? {
             OR: [

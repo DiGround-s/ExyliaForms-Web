@@ -71,7 +71,10 @@
     "limitReached": "已达上限",
     "limitReachedTitle": "不可用",
     "limitReachedDesc": "您已达到此表单的提交上限。",
-    "noFields": "此表单尚未配置任何字段。"
+    "noFields": "此表单尚未配置任何字段。",
+    "fieldRequired": "此字段为必填项",
+    "minValueMsg": "最小值为 {min}",
+    "maxValueMsg": "最大值为 {max}"
   },
   "submissions": {
     "title": "我的回复",
@@ -135,7 +138,8 @@
       "noAnswers": "暂无记录的回答。",
       "statusPending": "待处理",
       "statusAccepted": "已接受",
-      "statusRejected": "已拒绝"
+      "statusRejected": "已拒绝",
+      "refresh": "刷新"
     },
     "editor": {
       "saved": "已保存",
@@ -184,7 +188,12 @@
       "formActiveDesc": "激活 — 用户可以查看和回复",
       "formInactiveDesc": "停用 — 用户可见但无法访问",
       "activate": "激活",
-      "deactivate": "停用"
+      "deactivate": "停用",
+      "logChannelTitle": "日志频道",
+      "logChannelDesc": "当提交被接受或拒绝时，向 Discord 频道发送消息。",
+      "logChannelId": "频道 ID",
+      "logAcceptedMessage": "接受消息",
+      "logRejectedMessage": "拒绝消息"
     },
     "fieldEditor": {
       "dragField": "拖动字段",
@@ -213,7 +222,11 @@
       "dropHere": "拖放字段到此处",
       "addFieldNoSection": "添加无分区字段",
       "addSection": "添加分区",
-      "addField": "添加字段"
+      "addField": "添加字段",
+      "minLength": "最小字符数",
+      "maxLength": "最大字符数",
+      "minValue": "最小值",
+      "maxValue": "最大值"
     }
   },
   "settings": {

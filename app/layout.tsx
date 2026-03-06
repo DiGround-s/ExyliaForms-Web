@@ -4,6 +4,7 @@ import "./globals.css"
 import { Providers } from "@/components/providers"
 import { ThemeInjector } from "@/components/theme-injector"
 import { getSettings } from "@/lib/settings"
+import { auth } from "@/lib/auth"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
 
@@ -30,9 +31,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = await getLocale()
-  const messages = await getMessages()
-  const { favicon_url } = await getSettings(["favicon_url"])
+  const [locale, messages, settings, session] = await Promise.all([
+    getLocale(),
+    getMessages(),
+    getSettings(["app_name", "favicon_url"]),
+    auth(),
+  ])
+  const { favicon_url } = settings
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -42,7 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${roboto.variable} ${openSans.variable} ${poppins.variable} ${nunito.variable} ${dmSans.variable} ${playfair.variable} ${lato.variable} ${raleway.variable} antialiased`}>
         <NextIntlClientProvider messages={messages} locale={locale}>
-          <Providers>{children}</Providers>
+          <Providers session={session}>{children}</Providers>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -1,16 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { LayoutDashboard, FileText, LogOut, ExternalLink, Settings, BarChart2, Users } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, FileText, LogOut, ExternalLink, Settings, BarChart2, Users, Check, Globe } from "lucide-react"
 import { signOut } from "next-auth/react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle"
-import { LanguageSwitcher } from "@/components/language-switcher"
+import { LOCALES, LOCALE_META } from "@/i18n/locales"
 
 interface AdminSidebarProps {
   appName: string
@@ -25,8 +25,10 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ appName, logoUrl, role, user }: AdminSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const t = useTranslations("nav")
   const tCommon = useTranslations("common")
+  const locale = useLocale()
 
   const isReviewer = role === "REVIEWER"
 
@@ -45,6 +47,11 @@ export function AdminSidebar({ appName, logoUrl, role, user }: AdminSidebarProps
     : role === "REVIEWER"
       ? tCommon("reviewer")
       : tCommon("admin")
+
+  function changeLocale(value: string) {
+    document.cookie = `NEXT_LOCALE=${value}; path=/; max-age=31536000; SameSite=Lax`
+    router.refresh()
+  }
 
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar">
@@ -104,6 +111,22 @@ export function AdminSidebar({ appName, logoUrl, role, user }: AdminSidebarProps
                 <p className="truncate text-xs text-muted-foreground">{user.email}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer">
+                  <Globe className="mr-2 h-4 w-4" />
+                  {LOCALE_META[locale as keyof typeof LOCALE_META]?.flag} {LOCALE_META[locale as keyof typeof LOCALE_META]?.label}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {LOCALES.map((loc) => (
+                    <DropdownMenuItem key={loc} onClick={() => changeLocale(loc)} className="cursor-pointer">
+                      {locale === loc && <Check className="mr-2 h-3.5 w-3.5" />}
+                      {locale !== loc && <span className="mr-2 w-3.5" />}
+                      {LOCALE_META[loc].flag} {LOCALE_META[loc].label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive cursor-pointer"
                 onClick={() => signOut({ callbackUrl: "/" })}
@@ -113,11 +136,10 @@ export function AdminSidebar({ appName, logoUrl, role, user }: AdminSidebarProps
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="flex-1 overflow-hidden">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{user.name}</p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
-          <LanguageSwitcher />
           <ThemeToggle />
         </div>
       </div>

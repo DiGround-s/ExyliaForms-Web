@@ -1,9 +1,17 @@
 import NextAuth from "next-auth"
 import Discord from "next-auth/providers/discord"
 import { PrismaAdapter } from "@auth/prisma-adapter"
+import { cache } from "react"
 import { prisma } from "./prisma"
 import { authConfig } from "@/auth.config"
 import type { UserRole } from "@prisma/client"
+
+const ROLE_TTL = 60_000
+
+const fetchUserRole = cache(async (userId: string): Promise<UserRole | null> => {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+  return user?.role ?? null
+})
 
 function getSuperAdminIds(): string[] {
   return (process.env.ADMIN_DISCORD_IDS ?? "")
@@ -15,6 +23,41 @@ function getSuperAdminIds(): string[] {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
+  callbacks: {
+    async jwt({ token, user, account, profile }) {
+      if (user) {
+        token.id = user.id
+        token.role = ((user as { role?: string }).role ?? "USER") as UserRole
+        token.roleCheckedAt = Date.now()
+      }
+      if (account?.provider === "discord" && profile) {
+        token.discordId = (profile as { id: string }).id
+      }
+      if (!token.id && token.sub) {
+        token.id = token.sub
+      }
+      const stale = !user && token.id &&
+        (!token.roleCheckedAt || Date.now() - token.roleCheckedAt > ROLE_TTL)
+      if (stale) {
+        const role = await fetchUserRole(token.id as string)
+        if (role) token.role = role
+        token.roleCheckedAt = Date.now()
+      }
+      if (token.discordId) {
+        const superAdminIds = getSuperAdminIds()
+        if (superAdminIds.includes(token.discordId as string)) {
+          token.role = "SUPERADMIN"
+        }
+      }
+      return token
+    },
+    session({ session, token }) {
+      session.user.id = (token.id as string) || (token.sub as string)
+      session.user.role = token.role as UserRole
+      session.user.discordId = token.discordId as string
+      return session
+    },
+  },
   providers: [
     Discord({
       authorization: {

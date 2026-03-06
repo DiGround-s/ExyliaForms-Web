@@ -94,6 +94,9 @@ export function FormEditor({ formId }: FormEditorProps) {
   const [dmRejected, setDmRejected] = useState<EmbedData>({ title: "", description: "", footer: "", color: "#ED4245", cooldown: "" })
   const [joinOnAcceptEnabled, setJoinOnAcceptEnabled] = useState(false)
   const [acceptServers, setAcceptServers] = useState<AcceptServerItem[]>([])
+  const [logChannelId, setLogChannelId] = useState("")
+  const [logAcceptedMessage, setLogAcceptedMessage] = useState("")
+  const [logRejectedMessage, setLogRejectedMessage] = useState("")
 
   useEffect(() => {
     fetch(`/api/admin/forms/${formId}`)
@@ -131,6 +134,9 @@ export function FormEditor({ formId }: FormEditorProps) {
             roleIdsText: (server.roleIds ?? []).join(", "),
           })),
         )
+        setLogChannelId(cfg.logChannelId ?? "")
+        setLogAcceptedMessage(cfg.logAcceptedMessage ?? "")
+        setLogRejectedMessage(cfg.logRejectedMessage ?? "")
       })
     fetch(`/api/admin/forms/${formId}/submissions`)
       .then((r) => r.json())
@@ -250,6 +256,9 @@ export function FormEditor({ formId }: FormEditorProps) {
         rejected: { title: dmRejected.title, description: dmRejected.description, footer: dmRejected.footer, color: dmRejected.color, cooldown: dmRejected.cooldown },
         joinOnAcceptEnabled,
         acceptServers: normalizedServers,
+        logChannelId: logChannelId.trim() || undefined,
+        logAcceptedMessage: logAcceptedMessage.trim() || undefined,
+        logRejectedMessage: logRejectedMessage.trim() || undefined,
       }
       const res = await fetch(`/api/admin/forms/${formId}`, {
         method: "PUT",
@@ -480,6 +489,45 @@ export function FormEditor({ formId }: FormEditorProps) {
                 hasCooldown
                 tEmbed={tEmbed}
               />
+              <Separator />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">{t("logChannelTitle")}</p>
+                  <p className="text-xs text-muted-foreground">{t("logChannelDesc")}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{t("logChannelId")}</Label>
+                  <Input
+                    value={logChannelId}
+                    onChange={(e) => setLogChannelId(e.target.value)}
+                    placeholder="123456789012345678"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("logAcceptedMessage")}
+                    <span className="ml-2 font-normal opacity-60">{"{{username}}, {{globalName}}, {{formTitle}}, {{date}}"}</span>
+                  </Label>
+                  <Textarea
+                    value={logAcceptedMessage}
+                    onChange={(e) => setLogAcceptedMessage(e.target.value)}
+                    placeholder="✅ **{{globalName}}** (`{{username}}`) ha sido **aceptado** en **{{formTitle}}**"
+                    rows={2}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("logRejectedMessage")}
+                    <span className="ml-2 font-normal opacity-60">{"{{username}}, {{globalName}}, {{formTitle}}, {{date}}"}</span>
+                  </Label>
+                  <Textarea
+                    value={logRejectedMessage}
+                    onChange={(e) => setLogRejectedMessage(e.target.value)}
+                    placeholder="❌ **{{globalName}}** (`{{username}}`) ha sido **rechazado** en **{{formTitle}}**"
+                    rows={2}
+                  />
+                </div>
+              </div>
               <Separator />
               <div className="space-y-4">
                 <div className="space-y-2">

@@ -71,7 +71,10 @@
     "limitReached": "Límite alcanzado",
     "limitReachedTitle": "No disponible",
     "limitReachedDesc": "Ya alcanzaste el límite de respuestas para este formulario.",
-    "noFields": "Este formulario no tiene campos configurados."
+    "noFields": "Este formulario no tiene campos configurados.",
+    "fieldRequired": "Este campo es obligatorio",
+    "minValueMsg": "El valor mínimo es {min}",
+    "maxValueMsg": "El valor máximo es {max}"
   },
   "submissions": {
     "title": "Mis respuestas",
@@ -135,7 +138,8 @@
       "noAnswers": "Sin respuestas registradas.",
       "statusPending": "Pendiente",
       "statusAccepted": "Aceptado",
-      "statusRejected": "Rechazado"
+      "statusRejected": "Rechazado",
+      "refresh": "Refrescar"
     },
     "editor": {
       "saved": "Guardado",
@@ -184,7 +188,12 @@
       "formActiveDesc": "Activo — los usuarios pueden ver y responder",
       "formInactiveDesc": "Inactivo — los usuarios lo ven pero no pueden acceder",
       "activate": "Activar",
-      "deactivate": "Desactivar"
+      "deactivate": "Desactivar",
+      "logChannelTitle": "Canal de log",
+      "logChannelDesc": "Envía un mensaje al canal de Discord cuando una respuesta es aceptada o rechazada.",
+      "logChannelId": "ID del canal",
+      "logAcceptedMessage": "Mensaje de aceptado",
+      "logRejectedMessage": "Mensaje de rechazado"
     },
     "fieldEditor": {
       "dragField": "Arrastrar campo",
@@ -213,7 +222,11 @@
       "dropHere": "Suelta campos aquí",
       "addFieldNoSection": "Añadir campo sin sección",
       "addSection": "Añadir sección",
-      "addField": "Añadir campo"
+      "addField": "Añadir campo",
+      "minLength": "Mín. caracteres",
+      "maxLength": "Máx. caracteres",
+      "minValue": "Valor mínimo",
+      "maxValue": "Valor máximo"
     }
   },
   "settings": {

@@ -113,6 +113,8 @@ export interface FieldDef {
     options?: string[]
     min?: number
     max?: number
+    minLength?: number
+    maxLength?: number
     checkboxText?: string
     minDate?: string
     maxDate?: string
@@ -144,6 +146,11 @@ function slugifyKey(label: string, existingKeys: string[], selfKey?: string): st
   return `${base}_${i}`
 }
 
+const TEXT_LENGTH_DEFAULTS: Record<string, { minLength: number; maxLength: number }> = {
+  SHORT_TEXT: { minLength: 0, maxLength: 255 },
+  LONG_TEXT: { minLength: 0, maxLength: 1000 },
+}
+
 function makeField(sectionId: string | null): FieldDef {
   return {
     id: crypto.randomUUID(),
@@ -154,7 +161,7 @@ function makeField(sectionId: string | null): FieldDef {
     required: false,
     order: 0,
     sectionId,
-    configJson: {},
+    configJson: { ...TEXT_LENGTH_DEFAULTS.SHORT_TEXT },
   }
 }
 
@@ -217,7 +224,8 @@ function FieldCard({
   const t = useTranslations("admin.fieldEditor")
   const tTypes = useTranslations("fieldTypes")
   const hasOptions = field.type === "SELECT" || field.type === "MULTI_SELECT"
-  const hasConfig = field.type === "CHECKBOX" || field.type === "NUMBER" || field.type === "DATE" || hasOptions
+  const hasTextConfig = field.type === "SHORT_TEXT" || field.type === "LONG_TEXT"
+  const hasConfig = hasTextConfig || field.type === "CHECKBOX" || field.type === "NUMBER" || field.type === "DATE" || hasOptions
   const color = FIELD_TYPE_STYLES[field.type] ?? DEFAULT_TYPE_STYLE
 
   const {
@@ -266,7 +274,10 @@ function FieldCard({
             <GripVertical className="h-4 w-4" />
           </button>
 
-          <Select value={field.type} onValueChange={(value) => onUpdate({ type: value })}>
+          <Select value={field.type} onValueChange={(value) => {
+            const configDefaults = TEXT_LENGTH_DEFAULTS[value] ?? {}
+            onUpdate({ type: value, configJson: { ...configDefaults } })
+          }}>
             <SelectTrigger className={`h-9 w-full text-xs sm:text-sm ${color.select}`}>
               <SelectValue />
             </SelectTrigger>
@@ -319,6 +330,31 @@ function FieldCard({
 
         {hasConfig && (
           <div className={`mt-3 space-y-3 rounded-lg border p-3 ${color.panel}`}>
+            {hasTextConfig && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("minLength")}</Label>
+                  <Input
+                    className="h-8"
+                    type="number"
+                    min={0}
+                    value={field.configJson.minLength ?? ""}
+                    onChange={(e) => updateConfig({ minLength: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maxLength")}</Label>
+                  <Input
+                    className="h-8"
+                    type="number"
+                    min={1}
+                    value={field.configJson.maxLength ?? ""}
+                    onChange={(e) => updateConfig({ maxLength: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </div>
+              </div>
+            )}
+
             {field.type === "CHECKBOX" && (
               <div className="space-y-1">
                 <Label className="text-xs">{t("checkboxText")}</Label>
