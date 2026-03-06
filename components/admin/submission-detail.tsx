@@ -116,52 +116,57 @@ export function SubmissionDetail({ submission, onStatusChange, onDelete, deletin
           <Badge variant={STATUS_VARIANT[submission.status]}>{statusLabel[submission.status]}</Badge>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 flex-wrap">
-          {onStatusChange && (
-            <>
-              <Button
-                size="sm"
-                variant={submission.status === "ACCEPTED" ? "default" : "outline"}
-                onClick={() => setConfirmStatus("ACCEPTED")}
-                disabled={submission.status === "ACCEPTED"}
-              >
-                <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                {t("accept")}
-              </Button>
-              <Button
-                size="sm"
-                variant={submission.status === "REJECTED" ? "destructive" : "outline"}
-                onClick={() => setConfirmStatus("REJECTED")}
-                disabled={submission.status === "REJECTED"}
-              >
-                <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                {t("reject")}
-              </Button>
-              {submission.status !== "PENDING" && (
+        {(onStatusChange || onDelete) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {onStatusChange && (
+              <>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  onClick={() => onStatusChange(submission.id, "PENDING")}
+                  variant={submission.status === "ACCEPTED" ? "default" : "outline"}
+                  onClick={() => setConfirmStatus("ACCEPTED")}
+                  disabled={submission.status === "ACCEPTED"}
+                  className="flex-1 sm:flex-none"
                 >
-                  <Clock className="mr-1.5 h-3.5 w-3.5" />
-                  {t("pendingAction")}
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                  {t("accept")}
                 </Button>
-              )}
-            </>
-          )}
-          {onDelete && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-auto text-destructive hover:text-destructive"
-              onClick={() => onDelete(submission.id)}
-              disabled={deleting}
-            >
-              {deleting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
-              {tCommon("delete")}
-            </Button>
-          )}
-        </div>
+                <Button
+                  size="sm"
+                  variant={submission.status === "REJECTED" ? "destructive" : "outline"}
+                  onClick={() => setConfirmStatus("REJECTED")}
+                  disabled={submission.status === "REJECTED"}
+                  className="flex-1 sm:flex-none"
+                >
+                  <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                  {t("reject")}
+                </Button>
+                {submission.status !== "PENDING" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onStatusChange(submission.id, "PENDING")}
+                    className="flex-1 sm:flex-none"
+                  >
+                    <Clock className="mr-1.5 h-3.5 w-3.5" />
+                    {t("pendingAction")}
+                  </Button>
+                )}
+              </>
+            )}
+            {onDelete && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto text-destructive hover:text-destructive"
+                onClick={() => onDelete(submission.id)}
+                disabled={deleting}
+              >
+                {deleting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
+                {tCommon("delete")}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {onStatusChange && (

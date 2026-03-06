@@ -11,7 +11,7 @@ const sectionSchema = z.object({
 })
 
 const fieldSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().uuid(),
   sectionId: z.string().nullable().optional(),
   key: z.string().min(1).max(100).regex(/^[a-z0-9_]+$/),
   type: z.nativeEnum(FieldType),
@@ -47,7 +47,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { sections, fields } = parsed.data
 
   await prisma.$transaction(async (tx) => {
-    await tx.formField.deleteMany({ where: { formId } })
     await tx.formSection.deleteMany({ where: { formId } })
 
     if (sections.length > 0) {
@@ -61,9 +60,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       })
     }
 
-    if (fields.length > 0) {
-      await tx.formField.createMany({
-        data: fields.map((f) => ({
+    const incomingIds = fields.map((f) => f.id)
+    await tx.formField.deleteMany({
+      where: { formId, id: { notIn: incomingIds } },
+    })
+
+    for (const f of fields) {
+      await tx.formField.upsert({
+        where: { id: f.id },
+        create: {
+          id: f.id,
           formId,
           sectionId: f.sectionId ?? null,
           key: f.key,
@@ -73,7 +79,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           required: f.required,
           order: f.order,
           configJson: f.configJson as object,
-        })),
+        },
+        update: {
+          sectionId: f.sectionId ?? null,
+          key: f.key,
+          type: f.type,
+          label: f.label,
+          helpText: f.helpText ?? null,
+          required: f.required,
+          order: f.order,
+          configJson: f.configJson as object,
+        },
       })
     }
   })

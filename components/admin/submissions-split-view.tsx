@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { Loader2, RefreshCw } from "lucide-react"
+import { ArrowLeft, Loader2, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -18,6 +18,12 @@ const STATUS_DOT: Record<SubmissionStatus, string> = {
   PENDING: "bg-yellow-400",
   ACCEPTED: "bg-green-500",
   REJECTED: "bg-red-500",
+}
+
+const STATUS_BADGE: Record<SubmissionStatus, string> = {
+  PENDING: "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
+  ACCEPTED: "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300",
+  REJECTED: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
 }
 
 interface Submission {
@@ -70,12 +76,13 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
   const [deletingAll, setDeletingAll] = useState(false)
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [mobileShowDetail, setMobileShowDetail] = useState(false)
 
-  const FILTERS: Array<{ key: Filter; label: string }> = [
+  const FILTERS: Array<{ key: Filter; label: string; count?: number }> = [
     { key: "ALL", label: t("filterAll") },
-    { key: "PENDING", label: t("filterPending") },
-    { key: "ACCEPTED", label: t("filterAccepted") },
-    { key: "REJECTED", label: t("filterRejected") },
+    { key: "PENDING", label: t("filterPending"), count: stats.pending },
+    { key: "ACCEPTED", label: t("filterAccepted"), count: stats.accepted },
+    { key: "REJECTED", label: t("filterRejected"), count: stats.rejected },
   ]
 
   const filtered = useMemo(
@@ -84,6 +91,11 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
   )
 
   const selected = submissions.find((s) => s.id === selectedId) ?? null
+
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId(id)
+    setMobileShowDetail(true)
+  }, [])
 
   const handleStatusChange = useCallback(async (id: string, status: SubmissionStatus) => {
     const prev = submissions.find((s) => s.id === id)
@@ -126,7 +138,10 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
       else if (sub.status === "REJECTED") next.rejected = Math.max(0, next.rejected - 1)
       return next
     })
-    if (selectedId === id) setSelectedId(nextList[0]?.id ?? null)
+    if (selectedId === id) {
+      setSelectedId(nextList[0]?.id ?? null)
+      setMobileShowDetail(false)
+    }
   }, [submissions, selectedId])
 
   const handleRefresh = useCallback(async () => {
@@ -149,6 +164,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
     setSubmissions([])
     setStats((st) => ({ ...st, total: 0, pending: 0, accepted: 0, rejected: 0, today: 0, week: 0 }))
     setSelectedId(null)
+    setMobileShowDetail(false)
     setConfirmDeleteAll(false)
   }, [formId])
 
@@ -161,119 +177,170 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
     { label: t("statsWeek"), value: stats.week },
   ]
 
+  const submissionList = (
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 border-b border-border/60 bg-background/50 p-2">
+        <div className="flex flex-wrap gap-1">
+          {FILTERS.map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                filter === key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {label}
+              {count !== undefined && (
+                <span className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                  filter === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background/80"
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            {filter !== "ALL" ? t("noSubmissionsFilter") : t("noSubmissions")}
+          </div>
+        ) : (
+          filtered.map((sub) => {
+            const name = sub.user.globalName ?? sub.user.username ?? sub.user.discordId ?? tAdmin("unknownUser")
+            const initial = name[0]?.toUpperCase() ?? "U"
+            const isSelected = selectedId === sub.id
+            return (
+              <button
+                key={sub.id}
+                onClick={() => handleSelect(sub.id)}
+                className={cn(
+                  "w-full border-b border-border/50 px-3 py-3 text-left transition-colors hover:bg-muted/40 active:bg-muted/60",
+                  isSelected && "bg-muted/70 border-l-2 border-l-primary"
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Avatar className="h-9 w-9 shrink-0 border border-border/60">
+                    <AvatarImage src={sub.user.image ?? undefined} />
+                    <AvatarFallback className="text-xs">{initial}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="truncate text-sm font-medium leading-tight">{name}</p>
+                      <span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_DOT[sub.status])} />
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {new Intl.DateTimeFormat(bcp47, { dateStyle: "medium", timeStyle: "short" }).format(new Date(sub.createdAt))}
+                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none", STATUS_BADGE[sub.status])}>
+                        {sub.status === "PENDING" ? t("statusPending") : sub.status === "ACCEPTED" ? t("statusAccepted") : t("statusRejected")}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {tSub("answersCount", { count: sub.answers.length })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         {statsRows.map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-border/70 bg-card/70 p-3 text-center shadow-sm">
-            <p className="text-2xl font-bold">{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
+          <div key={label} className="rounded-lg border border-border/70 bg-card/70 p-2.5 text-center shadow-sm sm:p-3">
+            <p className="text-xl font-bold sm:text-2xl">{value}</p>
+            <p className="text-[10px] text-muted-foreground sm:text-xs">{label}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-card/70 p-1.5">
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map(({ key, label }) => (
-            <Button
-              key={key}
-              size="sm"
-              variant={filter === key ? "default" : "outline"}
-              onClick={() => setFilter(key)}
-              className="h-7 text-xs"
-            >
-              {label}
-              {key !== "ALL" && (
-                <span className="ml-1 opacity-70">
-                  ({key === "PENDING" ? stats.pending : key === "ACCEPTED" ? stats.accepted : stats.rejected})
-                </span>
-              )}
-            </Button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-card/70 px-2.5 py-2">
+        <p className="text-xs text-muted-foreground">
+          {t("statsTotal")}: <span className="font-semibold text-foreground">{stats.total}</span>
+        </p>
         <div className="flex items-center gap-1.5">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`mr-1.5 h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={cn("mr-1 h-3 w-3", refreshing && "animate-spin")} />
             {t("refresh")}
           </Button>
           {!readOnly && (
-            <Button
-              size="sm"
-              variant="destructive"
-              className="h-7 text-xs"
-              onClick={() => setConfirmDeleteAll(true)}
-            >
+            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => setConfirmDeleteAll(true)}>
               {t("deleteAll")}
             </Button>
           )}
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {submissions.length === 0 ? (
         <Alert>
-          <AlertDescription>
-            {filter !== "ALL" ? t("noSubmissionsFilter") : t("noSubmissions")}
-          </AlertDescription>
+          <AlertDescription>{t("noSubmissions")}</AlertDescription>
         </Alert>
       ) : (
-        <div className="flex gap-0 overflow-hidden rounded-xl border border-border/70 bg-card/65 shadow-sm" style={{ height: "64vh" }}>
-          <div className="w-80 shrink-0 border-r border-border/70 overflow-y-auto bg-background/50">
-            {filtered.map((sub) => {
-              const name = sub.user.globalName ?? sub.user.username ?? sub.user.discordId ?? tAdmin("unknownUser")
-              const initial = name[0]?.toUpperCase() ?? "U"
-              return (
-                <button
-                  key={sub.id}
-                  onClick={() => setSelectedId(sub.id)}
-                  className={cn(
-                    "w-full border-b border-border/60 px-4 py-3 text-left transition-colors hover:bg-muted/40",
-                    selectedId === sub.id && "bg-muted/70"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8 shrink-0 border border-border/60">
-                      <AvatarImage src={sub.user.image ?? undefined} />
-                      <AvatarFallback className="text-xs">{initial}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="truncate text-sm font-medium">{name}</p>
-                        <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_DOT[sub.status])} />
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {new Intl.DateTimeFormat(bcp47, { dateStyle: "medium", timeStyle: "short" }).format(new Date(sub.createdAt))}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">
-                    {tSub("answersCount", { count: sub.answers.length })}
-                  </div>
-                </button>
-              )
-            })}
+        <>
+          <div className="hidden lg:flex gap-0 overflow-hidden rounded-xl border border-border/70 bg-card/65 shadow-sm" style={{ height: "64vh" }}>
+            <div className="w-72 shrink-0 border-r border-border/70 xl:w-80">
+              {submissionList}
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6">
+              {selected ? (
+                <SubmissionDetail
+                  submission={selected}
+                  onStatusChange={readOnly ? undefined : handleStatusChange}
+                  onDelete={readOnly ? undefined : handleDelete}
+                  deleting={deleting === selected.id}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  {t("selectOne")}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
-            {selected ? (
-              <SubmissionDetail
-                submission={selected}
-                onStatusChange={readOnly ? undefined : handleStatusChange}
-                onDelete={readOnly ? undefined : handleDelete}
-                deleting={deleting === selected.id}
-              />
+          <div className="lg:hidden">
+            {!mobileShowDetail ? (
+              <div className="overflow-hidden rounded-xl border border-border/70 bg-card/65 shadow-sm" style={{ maxHeight: "75vh" }}>
+                {submissionList}
+              </div>
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                {t("selectOne")}
+              <div className="space-y-3">
+                <button
+                  onClick={() => setMobileShowDetail(false)}
+                  className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/70 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {t("filterAll")}
+                  <span className="ml-1 text-xs opacity-60">({filtered.length})</span>
+                </button>
+                {selected ? (
+                  <SubmissionDetail
+                    submission={selected}
+                    onStatusChange={readOnly ? undefined : handleStatusChange}
+                    onDelete={readOnly ? undefined : handleDelete}
+                    deleting={deleting === selected.id}
+                  />
+                ) : (
+                  <div className="rounded-xl border border-border/70 bg-card/70 p-8 text-center text-sm text-muted-foreground">
+                    {t("selectOne")}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {!readOnly && (
