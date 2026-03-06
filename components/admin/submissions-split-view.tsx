@@ -214,7 +214,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain">
         {filtered.length === 0 ? (
           <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
             {filter !== "ALL" ? t("noSubmissionsFilter") : t("noSubmissions")}
@@ -320,7 +320,7 @@ export function SubmissionsSplitView({ formId, initialSubmissions, stats: initia
 
           <div className="lg:hidden">
             {!mobileShowDetail ? (
-              <div className="overflow-hidden rounded-xl border border-border/70 bg-card/65 shadow-sm" style={{ maxHeight: "75vh" }}>
+              <div className="overflow-hidden rounded-xl border border-border/70 bg-card/65 shadow-sm" style={{ height: "75vh" }}>
                 {submissionList}
               </div>
             ) : (
